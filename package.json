@@ -1,6 +1,6 @@
 {
   "name": "@webhookrelay/sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Official TypeScript/JavaScript SDK for the Webhook Relay API — manage buckets, inputs, outputs, service connections and JavaScript transformation functions, poll webhooks and subscribe to them in real time over WebSocket.",
   "type": "module",
   "main": "./dist/index.cjs",
