@@ -92,13 +92,25 @@ export interface Input {
 export interface CreateInputParams {
   name?: string;
   description?: string;
+  /** CamelCase alias for `function_id`. */
+  functionId?: string;
   function_id?: string;
+  /** CamelCase alias for `status_code`. */
+  statusCode?: number;
   status_code?: number;
   body?: number[] | string;
   headers?: Headers;
+  /** CamelCase alias for `custom_domain`. */
+  customDomain?: string;
   custom_domain?: string;
+  /** CamelCase alias for `path_prefix`. */
+  pathPrefix?: string;
   path_prefix?: string;
+  /** CamelCase alias for `strip_path_prefix`. */
+  stripPathPrefix?: boolean;
   strip_path_prefix?: boolean;
+  /** CamelCase alias for `response_from_output`. */
+  responseFromOutput?: string;
   response_from_output?: string;
 }
 
@@ -138,14 +150,20 @@ export interface CreateOutputParams {
   destination: string;
   name?: string;
   description?: string;
+  /** CamelCase alias for `function_id`. */
+  functionId?: string;
   function_id?: string;
   headers?: Headers;
   rules?: Rules;
   internal?: boolean;
   disabled?: boolean;
+  /** CamelCase alias for `lock_path`. */
+  lockPath?: boolean;
   lock_path?: boolean;
   retries?: number;
   timeout?: number;
+  /** CamelCase alias for `tls_verification`. */
+  tlsVerification?: boolean;
   tls_verification?: boolean;
 }
 
@@ -246,10 +264,16 @@ export interface FunctionConfigVariable {
 }
 
 export interface GenerateFunctionParams {
+  /** CamelCase alias for `additional_info`. */
+  additionalInfo?: string;
   /** Natural-language description of what the function should do. */
   additional_info?: string;
+  /** CamelCase alias for `input_payload`. */
+  inputPayload?: string;
   /** Example inbound payload. */
   input_payload?: string;
+  /** CamelCase alias for `output_payload`. */
+  outputPayload?: string;
   /** Desired outbound payload. */
   output_payload?: string;
 }
@@ -279,7 +303,11 @@ export type ServiceConnectionOutputType =
   | "slack";
 
 export interface AWSServiceConnectionCredentials {
+  /** CamelCase alias for `access_key_id`. */
+  accessKeyId?: string;
   access_key_id?: string;
+  /** CamelCase alias for `secret_access_key`. */
+  secretAccessKey?: string;
   secret_access_key?: string;
 }
 
@@ -287,7 +315,7 @@ export interface ServiceConnection {
   id: string;
   name: string;
   account_id?: string;
-  service_type: ServiceType;
+  service_type?: ServiceType;
   status?: ServiceConnectionStatus;
   error?: string;
   retries?: number;
@@ -301,9 +329,17 @@ export interface ServiceConnection {
 
 export interface CreateServiceConnectionParams {
   name: string;
+  /** CamelCase alias for `service_type`. */
+  serviceType?: ServiceType;
   service_type: ServiceType;
+  /** CamelCase alias for `aws_service_connection`. */
+  awsServiceConnection?: AWSServiceConnectionCredentials;
   aws_service_connection?: AWSServiceConnectionCredentials;
+  /** CamelCase alias for `gcp_service_connection`. */
+  gcpServiceConnection?: Record<string, unknown>;
   gcp_service_connection?: Record<string, unknown>;
+  /** CamelCase alias for `azure_service_connection`. */
+  azureServiceConnection?: Record<string, unknown>;
   azure_service_connection?: Record<string, unknown>;
 }
 

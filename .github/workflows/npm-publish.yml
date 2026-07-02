@@ -66,8 +66,9 @@ jobs:
         run: npm version "${{ steps.v.outputs.version }}" --no-git-tag-version --allow-same-version
 
       - name: Publish
-        # Set NPM_CONFIG_PROVENANCE to "true" once this repository is public
-        # (npm provenance attestations require a public source repo).
+        # Provenance is enabled: the repository is public and this job runs in
+        # GitHub Actions with OIDC (id-token: write), so npm attaches a verified
+        # provenance attestation to each release.
         env:
-          NPM_CONFIG_PROVENANCE: "false"
+          NPM_CONFIG_PROVENANCE: "true"
         run: npm publish --access public

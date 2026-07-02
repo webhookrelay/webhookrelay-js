@@ -1,4 +1,5 @@
 import type { HttpClient } from "../http.js";
+import { inputParams } from "../params.js";
 import type { CreateInputParams, Input, UpdateInputParams } from "../types.js";
 
 /**
@@ -20,7 +21,7 @@ export class InputsResource {
   create(bucketId: string, params: CreateInputParams): Promise<Input> {
     return this.http.post<Input>(
       `/v1/buckets/${encodeURIComponent(bucketId)}/inputs`,
-      { body: params },
+      { body: inputParams(params) },
     );
   }
 
@@ -32,7 +33,7 @@ export class InputsResource {
   ): Promise<Input> {
     return this.http.put<Input>(
       `/v1/buckets/${encodeURIComponent(bucketId)}/inputs/${encodeURIComponent(inputId)}`,
-      { body: params },
+      { body: inputParams(params) },
     );
   }
 

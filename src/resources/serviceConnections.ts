@@ -1,4 +1,8 @@
 import type { HttpClient } from "../http.js";
+import {
+  managedServiceParams,
+  serviceConnectionParams,
+} from "../params.js";
 import type {
   CreateServiceConnectionParams,
   ServiceConnection,
@@ -37,7 +41,7 @@ export class ServiceConnectionsResource {
   /** Create a service connection. */
   create(params: CreateServiceConnectionParams): Promise<ServiceConnection> {
     return this.http.post<ServiceConnection>("/v1/service-connections", {
-      body: params,
+      body: serviceConnectionParams(params),
     });
   }
 
@@ -55,7 +59,7 @@ export class ServiceConnectionsResource {
   ): Promise<ServiceConnection> {
     return this.http.put<ServiceConnection>(
       `/v1/service-connections/${encodeURIComponent(id)}`,
-      { body: params },
+      { body: serviceConnectionParams(params) },
     );
   }
 
@@ -82,7 +86,7 @@ export class ServiceConnectionsResource {
   ): Promise<ServiceConnectionInput> {
     return this.http.post<ServiceConnectionInput>(
       `/v1/buckets/${encodeURIComponent(bucketId)}/service-connection-inputs`,
-      { body: params },
+      { body: managedServiceParams(params) },
     );
   }
 
@@ -94,7 +98,7 @@ export class ServiceConnectionsResource {
   ): Promise<ServiceConnectionInput> {
     return this.http.put<ServiceConnectionInput>(
       `/v1/buckets/${encodeURIComponent(bucketId)}/service-connection-inputs/${encodeURIComponent(inputId)}`,
-      { body: params },
+      { body: managedServiceParams(params) },
     );
   }
 
@@ -123,7 +127,7 @@ export class ServiceConnectionsResource {
   ): Promise<ServiceConnectionOutput> {
     return this.http.post<ServiceConnectionOutput>(
       `/v1/buckets/${encodeURIComponent(bucketId)}/service-connection-outputs`,
-      { body: params },
+      { body: managedServiceParams(params) },
     );
   }
 
@@ -135,7 +139,7 @@ export class ServiceConnectionsResource {
   ): Promise<ServiceConnectionOutput> {
     return this.http.put<ServiceConnectionOutput>(
       `/v1/buckets/${encodeURIComponent(bucketId)}/service-connection-outputs/${encodeURIComponent(outputId)}`,
-      { body: params },
+      { body: managedServiceParams(params) },
     );
   }
 

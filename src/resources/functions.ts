@@ -1,4 +1,5 @@
 import type { HttpClient } from "../http.js";
+import { functionParams } from "../params.js";
 import type {
   CreateFunctionParams,
   FunctionConfigVariable,
@@ -123,7 +124,7 @@ export class FunctionsResource {
    */
   generate(params: GenerateFunctionParams): Promise<GenerateFunctionResponse> {
     return this.http.post<GenerateFunctionResponse>("/v1/functions-generate", {
-      body: params,
+      body: functionParams(params),
     });
   }
 }

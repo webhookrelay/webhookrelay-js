@@ -1,4 +1,5 @@
 import type { HttpClient } from "../http.js";
+import { outputParams } from "../params.js";
 import type {
   CreateOutputParams,
   Output,
@@ -28,7 +29,7 @@ export class OutputsResource {
   create(bucketId: string, params: CreateOutputParams): Promise<Output> {
     return this.http.post<Output>(
       `/v1/buckets/${encodeURIComponent(bucketId)}/outputs`,
-      { body: params },
+      { body: outputParams(params) },
     );
   }
 
@@ -40,7 +41,7 @@ export class OutputsResource {
   ): Promise<Output> {
     return this.http.put<Output>(
       `/v1/buckets/${encodeURIComponent(bucketId)}/outputs/${encodeURIComponent(outputId)}`,
-      { body: params },
+      { body: outputParams(params) },
     );
   }
 
