@@ -1,0 +1,91 @@
+{
+  "name": "@webhookrelay/sdk",
+  "version": "0.1.0",
+  "description": "Official TypeScript/JavaScript SDK for the Webhook Relay API — manage buckets, inputs, outputs, service connections and JavaScript transformation functions, poll webhooks and subscribe to them in real time over WebSocket.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./generated": {
+      "types": "./dist/generated/api.d.ts",
+      "import": "./dist/generated/api.js",
+      "require": "./dist/generated/api.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "openapi": "swagger-typescript-api generate -p ./swagger/swagger.yaml -o ./src/generated -n api.ts && node scripts/postprocess-generated.mjs",
+    "prepublishOnly": "npm run build",
+    "prepack": "npm run build"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "optionalDependencies": {
+    "ws": "^8.18.0"
+  },
+  "peerDependencies": {
+    "ws": "^8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "ws": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/ws": "^8.5.10",
+    "@vitest/coverage-v8": "^2.1.9",
+    "swagger-typescript-api": "^13.0.23",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^2.1.9"
+  },
+  "keywords": [
+    "webhook",
+    "webhooks",
+    "webhookrelay",
+    "webhook-relay",
+    "relay",
+    "sdk",
+    "api",
+    "api-client",
+    "typescript",
+    "websocket",
+    "tunnel",
+    "webhook-forwarding",
+    "webhook-transformation"
+  ],
+  "homepage": "https://webhookrelay.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/webhookrelay/webhookrelay-js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/webhookrelay/webhookrelay-js/issues",
+    "email": "support@webhookrelay.com"
+  },
+  "author": "Webhook Relay <support@webhookrelay.com> (https://webhookrelay.com)",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
+}

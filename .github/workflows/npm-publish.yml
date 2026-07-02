@@ -1,0 +1,73 @@
+name: Publish to npm
+
+# Publishes @webhookrelay/sdk to the npm registry using npm Trusted Publishing
+# (OIDC) — no long-lived NPM_TOKEN and no 2FA/OTP prompts. The package version
+# is pinned to the release tag so the npm version always matches the git tag.
+#
+# Configure the trusted publisher once at:
+#   npmjs.com -> @webhookrelay/sdk -> Settings -> Trusted Publisher
+# with:
+#   Publisher:          GitHub Actions
+#   Organization/user:  webhookrelay
+#   Repository:         webhookrelay-js
+#   Workflow filename:  npm-publish.yml
+#   Environment name:   npm-publish
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish, e.g. 0.1.1 (defaults to latest git tag)"
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish @webhookrelay/sdk
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    permissions:
+      contents: read
+      id-token: write # required for OIDC trusted publishing
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # tags needed for the git-describe fallback
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Update npm (trusted publishing requires npm >= 11.5.1)
+        run: npm install -g npm@latest
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Resolve version
+        id: v
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          [ -z "$TAG" ] && TAG="${{ github.event.inputs.version }}"
+          [ -z "$TAG" ] && TAG="$(git describe --tags --abbrev=0)"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Pin package version
+        run: npm version "${{ steps.v.outputs.version }}" --no-git-tag-version --allow-same-version
+
+      - name: Publish
+        # Set NPM_CONFIG_PROVENANCE to "true" once this repository is public
+        # (npm provenance attestations require a public source repo).
+        env:
+          NPM_CONFIG_PROVENANCE: "false"
+        run: npm publish --access public

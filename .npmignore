@@ -1,0 +1,12 @@
+# Source and tooling are not shipped — only dist/ (see "files" in package.json).
+src/
+swagger/
+examples/
+.github/
+.env
+.env.example
+Makefile
+tsconfig.json
+tsup.config.ts
+*.tsbuildinfo
+.gitignore

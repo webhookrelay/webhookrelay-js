@@ -1,0 +1,4914 @@
+definitions:
+  api.Response:
+    properties:
+      id:
+        type: string
+      status:
+        type: string
+    type: object
+  api.ServerConfig:
+    properties:
+      turnstile_disabled:
+        type: boolean
+      version:
+        type: string
+    type: object
+  api.accessTokenCreateResponse:
+    properties:
+      key:
+        type: string
+      secret:
+        type: string
+    type: object
+  api.actionLogRequest:
+    properties:
+      action:
+        type: string
+      output:
+        description: output ID, if not specified defaults to original output
+        type: string
+      process_policy:
+        description: skip/force
+        type: string
+    type: object
+  api.createAccessTokenRequest:
+    properties:
+      api_access:
+        type: string
+      description:
+        type: string
+      scopes:
+        $ref: '#/definitions/api.tokenScopes'
+    type: object
+  api.createManagedCertRequest:
+    properties:
+      domain:
+        type: string
+      name:
+        type: string
+      options:
+        additionalProperties:
+          type: string
+        type: object
+      provider:
+        type: string
+    type: object
+  api.eventResponse:
+    properties:
+      has_more:
+        type: boolean
+      logs:
+        items:
+          $ref: '#/definitions/structs.Log'
+        type: array
+      next_cursor:
+        type: string
+    type: object
+  api.listPlanOptionalItemsResponse:
+    properties:
+      plans:
+        items:
+          $ref: '#/definitions/api.planOptionalItems'
+        type: array
+    type: object
+  api.loginResponse:
+    properties:
+      mfa_required:
+        type: boolean
+      mfa_token:
+        type: string
+      token:
+        type: string
+    type: object
+  api.logsHistogramBucketJSON:
+    properties:
+      counts:
+        additionalProperties:
+          type: integer
+        type: object
+      latency_ms_avg:
+        type: number
+      max_retries:
+        type: integer
+      minute:
+        type: integer
+      retried:
+        description: |-
+          Retry-pressure overlay. With durable delivery on, latest-status
+          alone drifts to "all sent"; these counters keep outages visible
+          in the chart. See design §6.10.9.
+        type: integer
+      retry_count:
+        type: integer
+      total:
+        type: integer
+    type: object
+  api.logsHistogramResponse:
+    properties:
+      buckets:
+        items:
+          $ref: '#/definitions/api.logsHistogramBucketJSON'
+        type: array
+      resolution:
+        description: |-
+          Resolution echoes back the bucket size returned by the selected
+          histogram tier.
+        type: string
+    type: object
+  api.logsResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/structs.Log'
+        type: array
+      limit:
+        type: integer
+      next_cursor:
+        description: |-
+          NextCursor is the opaque token a caller passes back as
+          ?cursor=... to get the next page. Emitted only when the
+          caller used cursor mode (or asked for it via the flag) AND
+          there is at least one more row past the current page. Empty
+          otherwise — clients should detect end-of-stream by an empty
+          NextCursor or a short final page.
+        type: string
+      offset:
+        type: integer
+      total:
+        type: integer
+      truncated:
+        description: |-
+          Truncated is true when the storage layer capped the candidate
+          segment set (post-manifest-prune) to its scan budget. The
+          returned Data still contains the newest matching rows (sort
+          order is newest-first), but older entries within the requested
+          [from, to] window may have been omitted. The UI should render
+          a "showing latest results — narrow the time range to see more"
+          banner so users on hot/bloated accounts don't think their
+          data is missing entirely. See pkg/turbostore/querylimit and
+          design.md §15.17. Omitted from the JSON when false (the
+          happy path).
+        type: boolean
+    type: object
+  api.mfaConfirmRequest:
+    properties:
+      token:
+        type: string
+    type: object
+  api.mfaSetupResponse:
+    properties:
+      enabled:
+        type: boolean
+      otpauth_url:
+        type: string
+      qr_code_data_url:
+        type: string
+      secret:
+        type: string
+    type: object
+  api.mfaStatusResponse:
+    properties:
+      enabled:
+        type: boolean
+      token:
+        type: string
+    type: object
+  api.mfaVerifyRequest:
+    properties:
+      mfa_token:
+        type: string
+      token:
+        type: string
+    type: object
+  api.planChangeRequest:
+    properties:
+      optional_items:
+        items:
+          $ref: '#/definitions/api.planChangeRequestOptionalItem'
+        type: array
+      plan_id:
+        description: Price ID
+        type: string
+    type: object
+  api.planChangeRequestOptionalItem:
+    properties:
+      description:
+        description: For example "Extra 1000 webhooks" (for basic)
+        type: string
+      metadata:
+        additionalProperties:
+          type: string
+        description: For now contains "webhooks" count, later will add team seats
+        type: object
+      price_id:
+        type: string
+      quantity:
+        type: integer
+    type: object
+  api.planChangeResponse:
+    properties:
+      checkout_required:
+        description: usually true, this is when frontend should call stripe lib
+        type: boolean
+      publishable_key:
+        type: string
+      session_id:
+        type: string
+    type: object
+  api.planOptionalItems:
+    properties:
+      optional_items:
+        items:
+          $ref: '#/definitions/structs.SubscriptionExtras'
+        type: array
+      plan_id:
+        type: string
+    type: object
+  api.setFunctionConfigRequest:
+    properties:
+      key:
+        type: string
+      value:
+        type: string
+    type: object
+  api.tokenScopes:
+    properties:
+      buckets:
+        items:
+          type: string
+        type: array
+      tunnels:
+        items:
+          type: string
+        type: array
+    type: object
+  api.updateAccessTokenRequest:
+    properties:
+      api_access:
+        type: string
+      description:
+        type: string
+      scopes:
+        $ref: '#/definitions/api.tokenScopes'
+    type: object
+  rules.Argument:
+    properties:
+      base64decode:
+        type: boolean
+      envname:
+        type: string
+      name:
+        type: string
+      source:
+        type: string
+    type: object
+  rules.MatchRule:
+    properties:
+      ip-range:
+        type: string
+      parameter:
+        $ref: '#/definitions/rules.Argument'
+      regex:
+        type: string
+      secret:
+        type: string
+      substring:
+        type: string
+      type:
+        type: string
+      value:
+        type: string
+    type: object
+  rules.NotRule:
+    properties:
+      and:
+        items:
+          $ref: '#/definitions/rules.Rules'
+        type: array
+      match:
+        $ref: '#/definitions/rules.MatchRule'
+      or:
+        items:
+          $ref: '#/definitions/rules.Rules'
+        type: array
+    type: object
+  rules.Rules:
+    properties:
+      and:
+        items:
+          $ref: '#/definitions/rules.Rules'
+        type: array
+      match:
+        $ref: '#/definitions/rules.MatchRule'
+      not:
+        $ref: '#/definitions/rules.NotRule'
+      or:
+        items:
+          $ref: '#/definitions/rules.Rules'
+        type: array
+    type: object
+  structs.APIAccess:
+    enum:
+    - 0
+    - 1
+    - 2
+    type: integer
+    x-enum-varnames:
+    - APIAccessNone
+    - APIAccessDisabled
+    - APIAccessEnabled
+  structs.AWSS3Input:
+    properties:
+      bucket_name:
+        type: string
+      file_format:
+        $ref: '#/definitions/structs.ObjectStorageFileFormat'
+      prefix:
+        type: string
+      region:
+        type: string
+    type: object
+  structs.AWSS3Output:
+    properties:
+      bucket_name:
+        type: string
+      file_format:
+        $ref: '#/definitions/structs.ObjectStorageFileFormat'
+      prefix:
+        type: string
+      region:
+        type: string
+    type: object
+  structs.AWSSNSInput:
+    properties:
+      region:
+        type: string
+      subscription_arn:
+        type: string
+      topic_arn:
+        type: string
+    type: object
+  structs.AWSSNSOutput:
+    properties:
+      region:
+        type: string
+      topic_arn:
+        type: string
+    type: object
+  structs.AWSSQSInput:
+    properties:
+      queue_url:
+        type: string
+      region:
+        type: string
+    type: object
+  structs.AWSSQSOutput:
+    properties:
+      queue_url:
+        type: string
+      region:
+        type: string
+    type: object
+  structs.AWSServiceConnection:
+    properties:
+      access_key_id:
+        type: string
+      secret_access_key:
+        type: string
+    type: object
+  structs.AccessToken:
+    properties:
+      active:
+        type: boolean
+      api_access:
+        $ref: '#/definitions/structs.APIAccess'
+      created_at:
+        type: string
+      deleted_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      last_login:
+        type: string
+      scopes:
+        $ref: '#/definitions/structs.Metadata'
+      updated_at:
+        type: string
+    type: object
+  structs.Account:
+    properties:
+      access_tokens:
+        items:
+          $ref: '#/definitions/structs.AccessToken'
+        type: array
+      active:
+        type: boolean
+      auth_type:
+        allOf:
+        - $ref: '#/definitions/structs.AccountAuthType'
+        description: authentication type (regular/github/google)
+      avatar_url:
+        type: string
+      buckets:
+        items:
+          $ref: '#/definitions/structs.Bucket'
+        type: array
+      company_name:
+        type: string
+      created_at:
+        type: string
+      current_period_end:
+        type: integer
+      current_period_start:
+        description: subscription period start and end, updated by stripe
+        type: integer
+      deleted_at:
+        type: string
+      domains:
+        items:
+          $ref: '#/definitions/structs.Domain'
+        type: array
+      email:
+        type: string
+      email_verified:
+        type: boolean
+      failed_login_attempts:
+        type: integer
+      first_name:
+        type: string
+      id:
+        type: string
+      last_failed_login:
+        type: string
+      last_login_at:
+        type: string
+      last_name:
+        type: string
+      mfa_enabled:
+        type: boolean
+      plan_id:
+        description: |-
+          desired plan ID, used when registering new account
+          to create new subscription in Stripe after
+          email is verified
+        type: string
+      plan_meta:
+        $ref: '#/definitions/structs.Metadata'
+      role:
+        type: string
+      sub_accounts:
+        items:
+          $ref: '#/definitions/structs.SubAccount'
+        type: array
+      subscription_created:
+        description: Unix ts
+        type: integer
+      subscription_extras:
+        items:
+          $ref: '#/definitions/structs.SubscriptionExtras'
+        type: array
+      subscription_meta:
+        $ref: '#/definitions/structs.Metadata'
+      subscription_status:
+        description: Subscription status and fields
+        type: string
+      suspend_protection:
+        description: |-
+          SuspendProtection prevents account's buckets from being suspended for
+          overuse
+        type: boolean
+      tunnels:
+        items:
+          $ref: '#/definitions/structs.Tunnel'
+        type: array
+      updated_at:
+        type: string
+      usage_alerts:
+        type: boolean
+      usage_alerts_email:
+        type: string
+      use_case:
+        description: Why have they registered?
+        type: string
+      use_case_completed:
+        type: boolean
+      username:
+        type: string
+      webhookCounts:
+        items:
+          $ref: '#/definitions/structs.WebhooksCount'
+        type: array
+    type: object
+  structs.AccountAPIKey:
+    properties:
+      api_key:
+        type: string
+    type: object
+  structs.AccountAuthType:
+    enum:
+    - regular
+    - github
+    - google
+    - saml
+    type: string
+    x-enum-varnames:
+    - AccountAuthTypeRegular
+    - AccountAuthTypeGithub
+    - AccountAuthTypeGoogle
+    - AccountAuthTypeSAML
+  structs.AdminConnectedAccount:
+    properties:
+      account_id:
+        type: string
+      email:
+        type: string
+      plan:
+        type: string
+      plan_id:
+        type: string
+      tunnel_clients:
+        items:
+          $ref: '#/definitions/structs.ConnectedTunnelClientInfo'
+        type: array
+      username:
+        type: string
+      webhook_clients:
+        items:
+          $ref: '#/definitions/structs.ConnectedWebhookClientInfo'
+        type: array
+    type: object
+  structs.AdminConnectedClientsResponse:
+    properties:
+      accounts:
+        items:
+          $ref: '#/definitions/structs.AdminConnectedAccount'
+        type: array
+      total_count:
+        type: integer
+    type: object
+  structs.AuthType:
+    enum:
+    - 0
+    - 1
+    - 2
+    type: integer
+    x-enum-varnames:
+    - AuthTypeNone
+    - AuthTypeBasic
+    - AuthTypeToken
+  structs.AzureServiceConnection:
+    properties:
+      client_id:
+        type: string
+      client_secret:
+        type: string
+      tenant_id:
+        type: string
+    type: object
+  structs.BillingDetails:
+    properties:
+      city:
+        type: string
+      country:
+        type: string
+      customer_id:
+        type: string
+      email:
+        type: string
+      line1:
+        type: string
+      line2:
+        type: string
+      name:
+        description: Customer full name or business name
+        type: string
+      postal_code:
+        type: string
+      state:
+        type: string
+      tax_id:
+        description: Value of the tax ID.
+        type: string
+      tax_id_type:
+        description: Type of the tax ID, one of `ae_trn`, `au_abn`, `au_arn`, `bg_uic`,
+          `br_cnpj`, `br_cpf`, `ca_bn`, `ca_gst_hst`, `ca_pst_bc`, `ca_pst_mb`, `ca_pst_sk`,
+          `ca_qst`, `ch_vat`, `cl_tin`, `es_cif`, `eu_oss_vat`, `eu_vat`, `gb_vat`,
+          `ge_vat`, `hk_br`, `hu_tin`, `id_npwp`, `il_vat`, `in_gst`, `is_vat`, `jp_cn`,
+          `jp_rn`, `kr_brn`, `li_uid`, `mx_rfc`, `my_frp`, `my_itn`, `my_sst`, `no_vat`,
+          `nz_gst`, `ru_inn`, `ru_kpp`, `sa_vat`, `sg_gst`, `sg_uen`, `si_tin`, `th_vat`,
+          `tw_vat`, `ua_vat`, `us_ein`, or `za_vat`
+        type: string
+    type: object
+  structs.Bucket:
+    properties:
+      account_id:
+        type: string
+      auth:
+        $ref: '#/definitions/structs.BucketAuth'
+      created_at:
+        type: integer
+      cron_id:
+        type: string
+      description:
+        type: string
+      ephemeral:
+        description: If true, doesn't save request body, query or headers
+        type: boolean
+      id:
+        type: string
+      inputs:
+        items:
+          $ref: '#/definitions/structs.Input'
+        type: array
+      integration_configurations:
+        items:
+          $ref: '#/definitions/structs.IntegrationConfiguration'
+        type: array
+      large_webhooks:
+        description: |-
+          LargeWebhooks - if set, we allow larger than 3MB webhooks
+          to be sent to the bucket. This is useful for large file uploads
+        type: boolean
+      name:
+        type: string
+      outputs:
+        items:
+          $ref: '#/definitions/structs.Output'
+        type: array
+      service_connection_inputs:
+        items:
+          $ref: '#/definitions/structs.ServiceConnectionInput'
+        type: array
+      service_connection_outputs:
+        items:
+          $ref: '#/definitions/structs.ServiceConnectionOutput'
+        type: array
+      static_ip:
+        description: StaticIP - if set, the bucket will use a static IP (routing through
+          forwarding proxy)
+        type: boolean
+      stream:
+        description: enable/disable websocket streaming for the bucket
+        type: boolean
+      suspended:
+        description: |-
+          Set to TRUE by the curator if accounts goes over the
+          webhook limit
+        type: boolean
+      updated_at:
+        type: integer
+    type: object
+  structs.BucketAuth:
+    properties:
+      created_at:
+        type: integer
+      id:
+        type: string
+      password:
+        type: string
+      token:
+        type: string
+      type:
+        $ref: '#/definitions/structs.AuthType'
+      updated_at:
+        type: integer
+      username:
+        type: string
+    type: object
+  structs.CombinedUsage:
+    properties:
+      plan_meta:
+        $ref: '#/definitions/structs.PlanMeta'
+      usage:
+        $ref: '#/definitions/structs.Usage'
+    type: object
+  structs.ConnectedClient:
+    properties:
+      tunnel_clients:
+        items:
+          $ref: '#/definitions/structs.ConnectedTunnelClient'
+        type: array
+      webhook_clients:
+        items:
+          $ref: '#/definitions/structs.ConnectedWebhookClient'
+        type: array
+    type: object
+  structs.ConnectedTunnelClient:
+    properties:
+      access_token_key:
+        type: string
+      client_ip:
+        type: string
+      client_version:
+        type: string
+      subscribed_at:
+        type: integer
+      tunnels:
+        items:
+          type: string
+        type: array
+    type: object
+  structs.ConnectedTunnelClientInfo:
+    properties:
+      access_token_key:
+        type: string
+      client_ip:
+        type: string
+      client_version:
+        type: string
+      subscribed_at:
+        type: integer
+      tunnel_names:
+        items:
+          type: string
+        type: array
+      tunnels:
+        items:
+          type: string
+        type: array
+    type: object
+  structs.ConnectedWebhookClient:
+    properties:
+      access_token_key:
+        type: string
+      buckets:
+        items:
+          type: string
+        type: array
+      client_ip:
+        type: string
+      client_type:
+        type: string
+      client_version:
+        type: string
+      destination:
+        type: string
+      subscribed_at:
+        type: integer
+    type: object
+  structs.ConnectedWebhookClientInfo:
+    properties:
+      access_token_key:
+        type: string
+      bucket_names:
+        items:
+          type: string
+        type: array
+      buckets:
+        items:
+          type: string
+        type: array
+      client_ip:
+        type: string
+      client_type:
+        type: string
+      client_version:
+        type: string
+      destination:
+        type: string
+      subscribed_at:
+        type: integer
+    type: object
+  structs.CreateFunctionRequest:
+    properties:
+      driver:
+        type: string
+      name:
+        type: string
+      payload:
+        type: string
+    type: object
+  structs.CreateTunnelRequest:
+    properties:
+      addr:
+        description: |-
+          Addr specifies TCP address server would listen on, it's required
+          for TCP tunnels.
+        type: string
+      agent_id:
+        type: string
+      auth:
+        $ref: '#/definitions/structs.TunnelAuth'
+      crypto:
+        type: string
+      description:
+        type: string
+      destination:
+        type: string
+      features:
+        $ref: '#/definitions/structs.Features'
+      group:
+        type: string
+      host:
+        type: string
+      ingress_rules:
+        $ref: '#/definitions/structs.IngressRules'
+      name:
+        type: string
+      protocol:
+        type: string
+      region:
+        type: string
+      subdomain:
+        type: string
+    type: object
+  structs.Cron:
+    properties:
+      account_id:
+        type: string
+      bucket:
+        $ref: '#/definitions/structs.Bucket'
+      created_at:
+        type: string
+      destination:
+        description: URL to send the webhook to
+        type: string
+      enabled:
+        type: boolean
+      ends_at:
+        type: string
+      function_id:
+        description: Function ID attached to the output
+        type: string
+      headers:
+        $ref: '#/definitions/structs.Headers'
+      id:
+        type: string
+      method:
+        description: |-
+          Payload and headers injected into the Bucket. Outputs
+          are still used to send the webhook
+        type: string
+      name:
+        type: string
+      next_run:
+        description: Populated by the handler for UI to display
+        type: string
+      payload:
+        type: string
+      recurring:
+        type: boolean
+      schedule:
+        type: string
+      starts_at:
+        description: Dates from which the cron job starts and ends
+        type: string
+      timezone:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  structs.DeleteFunctionResponse:
+    type: object
+  structs.DeleteVariableResponse:
+    type: object
+  structs.DiscordOutput:
+    properties:
+      webhook_url:
+        type: string
+    type: object
+  structs.Domain:
+    properties:
+      created_at:
+        type: integer
+      domain:
+        description: |-
+          Domain can be any 3rd party domain such as
+          user.example.com
+        type: string
+      id:
+        type: string
+      updated_at:
+        type: integer
+    type: object
+  structs.DurabilityConfig:
+    properties:
+      custom_delays:
+        description: CustomDelays is consulted only when Schedule == "custom".
+        items:
+          $ref: '#/definitions/time.Duration'
+        type: array
+      deadline:
+        allOf:
+        - $ref: '#/definitions/time.Duration'
+        description: |-
+          Deadline caps total retry duration measured from the webhook's
+          received_at timestamp. Zero falls through to a schedule-derived
+          default (~30 d for "long", ~16 h for "medium", ~25 min for
+          "seconds").
+      enabled:
+        description: Enabled toggles the whole feature for this output.
+        type: boolean
+      handoff_after:
+        allOf:
+        - $ref: '#/definitions/time.Duration'
+        description: |-
+          HandoffAfter is the attempt-age threshold past which a failing
+          delivery is moved from the in-pubsub retry path to the durable
+          pending index. Zero falls through to 15 minutes — short enough
+          that long retries don't bloat the pubsub backlog, long enough
+          that transient blips don't pay an extra object-store PUT.
+      schedule:
+        description: |-
+          Schedule names a backoff preset ("seconds", "medium", "long",
+          "custom"). Empty falls through to "long" when Enabled, "seconds"
+          otherwise. Custom backoffs use CustomDelays.
+        type: string
+    type: object
+  structs.Endpoint:
+    properties:
+      address:
+        type: string
+    type: object
+  structs.ExecuteLog:
+    properties:
+      account_id:
+        type: string
+      configuration_id:
+        type: string
+      created:
+        type: integer
+      duration:
+        type: integer
+      execute_request:
+        $ref: '#/definitions/structs.ExecuteRequest'
+      execute_response:
+        $ref: '#/definitions/structs.ExecuteResponse'
+      function_id:
+        type: string
+      id:
+        type: string
+      status:
+        $ref: '#/definitions/structs.ExecutionStatus'
+      updated:
+        type: integer
+    type: object
+  structs.ExecuteLogResponse:
+    properties:
+      execute_logs:
+        items:
+          $ref: '#/definitions/structs.ExecuteLog'
+        type: array
+      limit:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
+    type: object
+  structs.ExecuteRequest:
+    properties:
+      account_id:
+        type: string
+      configuration_id:
+        type: string
+      function_id:
+        type: string
+      request:
+        $ref: '#/definitions/structs.Request'
+      request_id:
+        type: string
+      response_body_path:
+        type: string
+    type: object
+  structs.ExecuteResponse:
+    properties:
+      error:
+        type: string
+      function_id:
+        type: string
+      request:
+        $ref: '#/definitions/structs.Request'
+      request_id:
+        type: string
+      request_modified:
+        type: boolean
+      response:
+        $ref: '#/definitions/structs.Response'
+      response_modified:
+        type: boolean
+      stop_forwarding:
+        type: boolean
+    type: object
+  structs.ExecutionStatus:
+    enum:
+    - none
+    - success
+    - error
+    type: string
+    x-enum-comments:
+      ExecutionStatusError: "2"
+      ExecutionStatusNone: "0"
+      ExecutionStatusSuccess: "1"
+    x-enum-varnames:
+    - ExecutionStatusNone
+    - ExecutionStatusSuccess
+    - ExecutionStatusError
+  structs.Features:
+    properties:
+      rewrite_host_header:
+        type: string
+      skip_insecure_verify:
+        description: validate TLS certificate
+        type: boolean
+    type: object
+  structs.Function:
+    properties:
+      account_id:
+        type: string
+      compression:
+        type: string
+      created:
+        type: integer
+      driver:
+        type: string
+      id:
+        type: string
+      metadata:
+        additionalProperties:
+          type: string
+        type: object
+      name:
+        type: string
+      payload:
+        type: string
+      payload_size:
+        type: integer
+      updated:
+        type: integer
+    type: object
+  structs.GCPGCSInput:
+    properties:
+      bucket_name:
+        type: string
+      file_format:
+        $ref: '#/definitions/structs.ObjectStorageFileFormat'
+      notification_id:
+        type: string
+      prefix:
+        type: string
+    type: object
+  structs.GCPGCSOutput:
+    properties:
+      bucket_name:
+        type: string
+      file_format:
+        $ref: '#/definitions/structs.ObjectStorageFileFormat'
+      prefix:
+        type: string
+    type: object
+  structs.GCPPubSubInput:
+    properties:
+      subscription_name:
+        type: string
+    type: object
+  structs.GCPPubSubOutput:
+    properties:
+      topic_name:
+        type: string
+    type: object
+  structs.GCPServiceConnection:
+    properties:
+      project_id:
+        type: string
+      service_account_email:
+        type: string
+      service_account_key:
+        type: string
+    type: object
+  structs.GenerateFunctionRequest:
+    properties:
+      additional_info:
+        description: Additional information about the function
+        type: string
+      input_payload:
+        type: string
+      output_payload:
+        description: Desired output payload
+        type: string
+    type: object
+  structs.GenerateFunctionResponse:
+    properties:
+      code:
+        description: Function code
+        type: string
+      validation_err:
+        description: Validation error message
+        type: string
+      validation_ok:
+        description: Indicates if the function is valid
+        type: boolean
+    type: object
+  structs.Header:
+    properties:
+      values:
+        items:
+          type: string
+        type: array
+    type: object
+  structs.Headers:
+    additionalProperties: true
+    type: object
+  structs.IngressRule:
+    properties:
+      endpoints:
+        description: Endpoints
+        items:
+          $ref: '#/definitions/structs.Endpoint'
+        type: array
+      name:
+        description: |-
+          Name is an option identifier for the ingress rule, it usually is a service name
+          if used with webrelay-ingress
+        type: string
+      path:
+        description: |-
+          Path is an extended POSIX regex as defined by IEEE Std 1003.1,
+          (i.e this follows the egrep/unix syntax, not the perl syntax)
+          matched against the path of an incoming request. Currently it can
+          contain characters disallowed from the conventional "path"
+          part of a URL as defined by RFC 3986. Paths must begin with
+          a '/'. If unspecified, the path defaults to a catch all sending
+          traffic to the backend.
+          +optional
+        type: string
+    type: object
+  structs.IngressRules:
+    properties:
+      rules:
+        items:
+          $ref: '#/definitions/structs.IngressRule'
+        type: array
+    type: object
+  structs.Input:
+    properties:
+      body:
+        items:
+          type: integer
+        type: array
+      bucket_id:
+        description: BucketID is a foreign key
+        type: string
+      created_at:
+        type: integer
+      created_by:
+        type: string
+      custom_domain:
+        description: |-
+          Input's domain name, can be set to work with the CNAMEs
+          so WHR will fetch a cert from LE
+          (make sure you create a CNAME DNS record for your domain to stats.uptimerobot.com.
+          And, it can take up to 30 mins for the custom domain to be activated.)
+        type: string
+      description:
+        type: string
+      function_id:
+        type: string
+      headers:
+        allOf:
+        - $ref: '#/definitions/structs.Headers'
+        description: response details
+      id:
+        type: string
+      legacy_tls:
+        description: |-
+          LegacyTLS widens the accepted handshake to TLS 1.0/1.1 *and* the
+          older RSA/CBC cipher set. The two used to be split into separate
+          fields but the policy resolver applies them as one logical toggle,
+          and the dashboard surfaces them as one switch — keep the on-disk
+          shape matching that single concept.
+        type: boolean
+      name:
+        type: string
+      path_prefix:
+        description: PathPrefix only works when CustomDomain is set
+        type: string
+      response_from_output:
+        description: |-
+          either output ID or "anyOutput" to indicate that the first response
+          from any output is good enough. Empty string
+        type: string
+      status_code:
+        type: integer
+      strip_path_prefix:
+        description: |-
+          StripPathPrefix indicates whether full path should be included when
+          forwarding the webhook. If the path prefix is /abc and the webhook
+          arrives at /abc/foo, then by default the full path will be /abc/foo
+        type: boolean
+      tls_version:
+        description: |-
+          TLSVersion sets the minimum accepted TLS version for this input's HTTPS endpoint. It is a floor, not a pin: handshakes negotiate this version or any higher one the backend allows (for example 1.1 still accepts 1.2 and 1.3).
+          Empty value means default hardened policy.
+        type: string
+      updated_at:
+        type: integer
+    type: object
+  structs.IntegrationConfiguration:
+    properties:
+      buckets:
+        items:
+          $ref: '#/definitions/structs.Bucket'
+        type: array
+      configuration:
+        allOf:
+        - $ref: '#/definitions/structs.Metadata'
+        description: |-
+          notification plugin configuration, free form JSON. Each plugin parses whatever configuration
+          it wants
+      created_at:
+        type: string
+      description:
+        type: string
+      disabled:
+        description: optionally disable notification (when you want to turn off events)
+        type: boolean
+      events:
+        description: event types, such as schedules.import.error
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      message:
+        description: read-only field populated by the plugin
+        type: string
+      plugin:
+        allOf:
+        - $ref: '#/definitions/structs.IntegrationPlugin'
+        description: plugin to use, such as Slack, Webhook, Email
+      status:
+        description: read-only field populated by the plugin
+        type: string
+      updated_at:
+        type: string
+    type: object
+  structs.IntegrationPlugin:
+    enum:
+    - webhook
+    - slack
+    type: string
+    x-enum-varnames:
+    - IntegrationPluginWebhook
+    - IntegrationPluginSlack
+  structs.JSONB:
+    additionalProperties: true
+    type: object
+  structs.Log:
+    properties:
+      account_id:
+        type: string
+      body:
+        description: Body is either set or populated from BodyBytes during MarshalJSON()
+        type: string
+      bucket_id:
+        type: string
+      compression:
+        description: |-
+          Compression indicates what compression type
+          was used
+        type: string
+      created_at:
+        type: integer
+      deleted_at:
+        type: string
+      duration_ms:
+        type: integer
+      ephemeral:
+        description: |-
+          If true, doesn't save request body, query or headers,
+          inherits from the bucket configuration
+        type: boolean
+      extra_path:
+        type: string
+      headers:
+        allOf:
+        - $ref: '#/definitions/structs.Headers'
+        description: request details
+      id:
+        type: string
+      input_function_execution_id:
+        description: |-
+          InputFunctionExecutionID is the reactor ExecuteLog id for the
+          ingress-side function that ran before this webhook hit the
+          bucket. Empty when no function ran at the input stage. The UI
+          reads /v1/functions/<fn>/logs/<id> for this id to render a
+          before/after diff.
+        type: string
+      input_id:
+        type: string
+      internal:
+        type: boolean
+      ip_address:
+        type: string
+      method:
+        type: string
+      output_function_execution_id:
+        description: |-
+          OutputFunctionExecutionID is the reactor ExecuteLog id for the
+          per-output function that ran before forwarding this delivery
+          to the destination. Empty when no function ran on the output.
+        type: string
+      output_id:
+        type: string
+      raw_query:
+        type: string
+      response_body:
+        items:
+          type: integer
+        type: array
+      response_headers:
+        $ref: '#/definitions/structs.Headers'
+      retries:
+        type: integer
+      service_connection_input_type:
+        description: |-
+          ServiceConnectionInputType is set when the log originates from a service connection input
+          (e.g. gcp_pubsub, aws_sqs, aws_sns, aws_s3, gcp_gcs)
+        type: string
+      service_connection_output_type:
+        description: |-
+          ServiceConnectionOutputType is set when the log is for a service connection output
+          (e.g. gcp_pubsub, aws_sqs, aws_sns, aws_s3, gcp_gcs)
+        type: string
+      status:
+        $ref: '#/definitions/structs.RequestStatus'
+      status_code:
+        type: integer
+      updated_at:
+        type: integer
+    type: object
+  structs.LogsStats:
+    properties:
+      day:
+        type: string
+      failures:
+        type: integer
+      max_retries:
+        type: integer
+      received:
+        type: integer
+      retried:
+        type: integer
+      retry_count:
+        type: integer
+      success:
+        type: integer
+    type: object
+  structs.Metadata:
+    additionalProperties: true
+    type: object
+  structs.NewsEntry:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      message:
+        type: string
+      message_of_the_day:
+        type: boolean
+      timestamp:
+        description: what date to show
+        type: integer
+      updated_at:
+        type: string
+      url:
+        type: string
+      visible:
+        type: boolean
+    type: object
+  structs.NewsEntryCreateRequest:
+    properties:
+      date:
+        description: what date to show
+        type: string
+      message:
+        type: string
+      message_of_the_day:
+        type: boolean
+      url:
+        type: string
+      visible:
+        type: boolean
+    type: object
+  structs.ObjectStorageFileFormat:
+    enum:
+    - json
+    - body_only
+    - har
+    type: string
+    x-enum-comments:
+      ObjectStorageFileFormatJSON: JSON format with headers, body, etc.
+    x-enum-varnames:
+    - ObjectStorageFileFormatJSON
+    - ObjectStorageFileFormatBody
+    - ObjectStorageFileFormatHAR
+  structs.Output:
+    properties:
+      bucket_id:
+        description: BucketID is a foreign key
+        type: string
+      created_at:
+        type: integer
+      created_by:
+        type: string
+      cron_id:
+        type: string
+      description:
+        type: string
+      destination:
+        type: string
+      disabled:
+        description: Enable/disable output destinations
+        type: boolean
+      durability:
+        allOf:
+        - $ref: '#/definitions/structs.DurabilityConfig'
+        description: |-
+          Durability configures long-period retries via the turbostore
+          pending-retry index. See pkg/turbostore/design.md §5.6.
+          Stored as JSON so we can extend without a schema migration.
+      function_id:
+        description: |-
+          FunctionID is used to indicate whethera code snippet should be used to
+          modify this webhook
+        type: string
+      headers:
+        allOf:
+        - $ref: '#/definitions/structs.Headers'
+        description: |-
+          Headers that will overwrite any existing headers
+          from the incoming request
+      id:
+        type: string
+      internal:
+        description: internal outputs will only be relayed by agents
+        type: boolean
+      lock_path:
+        description: |-
+          LockPath ensures that the request path cannot be changed from what is
+          specified in the destination. For example if request is coming to /v1/webhooks/xxx/github-jenkins,
+          with lock path 'false' and destination 'http://localhost:8080' it would go to http://localhost:8080/github-jenkins.
+          However, with lock path 'true', it will be sent to 'http://localhost:8080'
+        type: boolean
+      name:
+        type: string
+      retries:
+        description: |-
+          additional retries (after the first 3 times fail). Setting
+          to -1 disables retries
+        type: integer
+      rules:
+        $ref: '#/definitions/rules.Rules'
+      throttle:
+        allOf:
+        - $ref: '#/definitions/structs.ThrottleConfig'
+        description: |-
+          Throttle configures per-output throughput throttling. When enabled,
+          the ingester/server stop delivering this output inline; webhooks are
+          persisted (left in RequestStatusReceived) and enqueued into the
+          turbostore throttle index, and the dispatcher's throttle controller
+          dequeues them at the configured rate/concurrency. Stored as JSON so
+          the schema can grow without a migration, same as Durability.
+      timeout:
+        description: response timeout
+        type: integer
+      tls_verification:
+        description: |-
+          Controls TLS verification of the certs for public
+          webhooks
+        type: boolean
+      updated_at:
+        type: integer
+    type: object
+  structs.PlanMeta:
+    properties:
+      agents:
+        type: integer
+      custom_hostnames:
+        type: boolean
+      custom_subdomains:
+        type: boolean
+      custom_tls_version:
+        type: boolean
+      functions:
+        type: integer
+      https_tunnels:
+        type: boolean
+      inputs:
+        type: integer
+      integration_configurations:
+        type: integer
+      large_webhooks:
+        type: boolean
+      legacy_tls:
+        type: boolean
+      logs_retention:
+        type: integer
+      managed_domains:
+        type: integer
+      outputs:
+        type: integer
+      overage:
+        type: number
+      public:
+        description: whether plan should be visible to public
+        type: boolean
+      reserved_domains:
+        type: integer
+      sub_accounts:
+        type: integer
+      tls_tunnels:
+        type: boolean
+      tokens:
+        type: integer
+      tunnels:
+        type: integer
+      webhooks:
+        type: integer
+    type: object
+  structs.Request:
+    properties:
+      body:
+        items:
+          type: integer
+        type: array
+      body_modified:
+        type: boolean
+      body_path:
+        type: string
+      header:
+        additionalProperties:
+          $ref: '#/definitions/structs.Header'
+        type: object
+      header_modified:
+        type: boolean
+      metadata:
+        additionalProperties:
+          type: string
+        type: object
+      method:
+        type: string
+      method_modified:
+        type: boolean
+      modified_body_path:
+        type: string
+      path:
+        type: string
+      path_modified:
+        type: boolean
+      raw_query:
+        type: string
+      raw_query_modified:
+        type: boolean
+    type: object
+  structs.RequestStatus:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    type: integer
+    x-enum-comments:
+      RequestStatusFailed: "2"
+      RequestStatusPreparing: "0"
+      RequestStatusReceived: "4"
+      RequestStatusRejected: "5"
+      RequestStatusSent: "1"
+      RequestStatusStalled: 3 - if request destination wasn't listening - incoming
+        requests will be stalled
+    x-enum-varnames:
+    - RequestStatusPreparing
+    - RequestStatusSent
+    - RequestStatusFailed
+    - RequestStatusStalled
+    - RequestStatusReceived
+    - RequestStatusRejected
+  structs.Response:
+    properties:
+      body:
+        items:
+          type: integer
+        type: array
+      body_path:
+        type: string
+      header:
+        additionalProperties:
+          $ref: '#/definitions/structs.Header'
+        type: object
+      status:
+        type: integer
+    type: object
+  structs.ServiceConnection:
+    properties:
+      account_id:
+        type: string
+      aws_service_connection:
+        $ref: '#/definitions/structs.AWSServiceConnection'
+      azure_service_connection:
+        $ref: '#/definitions/structs.AzureServiceConnection'
+      created_at:
+        type: string
+      error:
+        type: string
+      gcp_service_connection:
+        $ref: '#/definitions/structs.GCPServiceConnection'
+      id:
+        description: ULID, starts with prefix "scn_"
+        type: string
+      last_checked:
+        type: string
+      name:
+        type: string
+      retries:
+        type: integer
+      service_type:
+        $ref: '#/definitions/structs.ServiceType'
+      status:
+        $ref: '#/definitions/structs.ServiceConnectionStatus'
+      updated_at:
+        type: string
+    type: object
+  structs.ServiceConnectionInput:
+    properties:
+      aws_s3_input:
+        $ref: '#/definitions/structs.AWSS3Input'
+      aws_sns_input:
+        $ref: '#/definitions/structs.AWSSNSInput'
+      aws_sqs_input:
+        $ref: '#/definitions/structs.AWSSQSInput'
+      bucket_id:
+        type: string
+      created_at:
+        type: string
+      error:
+        type: string
+      function_id:
+        type: string
+      gcp_gcs_input:
+        $ref: '#/definitions/structs.GCPGCSInput'
+      gcp_pubsub_input:
+        $ref: '#/definitions/structs.GCPPubSubInput'
+      id:
+        type: string
+      name:
+        type: string
+      service_connection_id:
+        type: string
+      service_connection_input_type:
+        allOf:
+        - $ref: '#/definitions/structs.ServiceConnectionInputType'
+        description: Used to load all inputs for a service connection
+      status:
+        $ref: '#/definitions/structs.ServiceConnectionInputStatus'
+      updated_at:
+        type: string
+    type: object
+  structs.ServiceConnectionInputStatus:
+    enum:
+    - ok
+    - error
+    type: string
+    x-enum-varnames:
+    - ServiceConnectionInputStatusOK
+    - ServiceConnectionInputStatusError
+  structs.ServiceConnectionInputType:
+    enum:
+    - gcp_pubsub
+    - gcp_gcs
+    - aws_s3
+    - aws_sqs
+    - aws_sns
+    type: string
+    x-enum-varnames:
+    - ServiceConnectionInputTypeGCPPubSub
+    - ServiceConnectionInputTypeGCPGCS
+    - ServiceConnectionInputTypeAWSS3
+    - ServiceConnectionInputTypeAWSSQS
+    - ServiceConnectionInputTypeAWSSNS
+  structs.ServiceConnectionOutput:
+    properties:
+      aws_s3_output:
+        $ref: '#/definitions/structs.AWSS3Output'
+      aws_sns_output:
+        $ref: '#/definitions/structs.AWSSNSOutput'
+      aws_sqs_output:
+        $ref: '#/definitions/structs.AWSSQSOutput'
+      bucket_id:
+        type: string
+      created_at:
+        type: integer
+      discord_output:
+        $ref: '#/definitions/structs.DiscordOutput'
+      function_id:
+        type: string
+      gcp_gcs_output:
+        $ref: '#/definitions/structs.GCPGCSOutput'
+      gcp_pubsub_output:
+        $ref: '#/definitions/structs.GCPPubSubOutput'
+      id:
+        type: string
+      name:
+        type: string
+      service_connection_id:
+        type: string
+      service_connection_output_type:
+        $ref: '#/definitions/structs.ServiceConnectionOutputType'
+      slack_output:
+        $ref: '#/definitions/structs.SlackOutput'
+      updated_at:
+        type: integer
+    type: object
+  structs.ServiceConnectionOutputType:
+    enum:
+    - gcp_pubsub
+    - gcp_gcs
+    - aws_s3
+    - aws_sqs
+    - aws_sns
+    - discord
+    - slack
+    type: string
+    x-enum-varnames:
+    - ServiceConnectionOutputTypeGCPPubSub
+    - ServiceConnectionOutputTypeGCPGCS
+    - ServiceConnectionOutputTypeAWSS3
+    - ServiceConnectionOutputTypeAWSSQS
+    - ServiceConnectionOutputTypeAWSSNS
+    - ServiceConnectionOutputTypeDiscord
+    - ServiceConnectionOutputTypeSlack
+  structs.ServiceConnectionStatus:
+    enum:
+    - pending
+    - connected
+    - error
+    type: string
+    x-enum-varnames:
+    - ServiceConnectionStatusPending
+    - ServiceConnectionStatusConnected
+    - ServiceConnectionStatusError
+  structs.ServiceType:
+    enum:
+    - gcp
+    - aws
+    - azure
+    type: string
+    x-enum-varnames:
+    - ServiceGCP
+    - ServiceAWS
+    - ServiceAzure
+  structs.SlackOutput:
+    properties:
+      webhook_url:
+        type: string
+    type: object
+  structs.SubAccount:
+    properties:
+      account:
+        $ref: '#/definitions/structs.Account'
+      account_id:
+        type: string
+      auth_type:
+        allOf:
+        - $ref: '#/definitions/structs.AccountAuthType'
+        description: authentication type (regular/github/google)
+      avatar_url:
+        type: string
+      created_at:
+        type: string
+      deleted_at:
+        type: string
+      email:
+        type: string
+      failed_login_attempts:
+        type: integer
+      id:
+        type: string
+      last_failed_login:
+        type: string
+      last_login_at:
+        type: string
+      mfa_enabled:
+        type: boolean
+      saml_sso_org_id:
+        type: string
+      update_password:
+        description: If set, user will be asked to change the password after login
+        type: boolean
+      updated_at:
+        type: string
+      username:
+        type: string
+    type: object
+  structs.SubAccountCreateRequest:
+    properties:
+      auth_type:
+        $ref: '#/definitions/structs.AccountAuthType'
+      email:
+        type: string
+      username:
+        type: string
+    type: object
+  structs.SubAccountCreateResponse:
+    properties:
+      password:
+        type: string
+      sub_account:
+        $ref: '#/definitions/structs.SubAccount'
+      username:
+        type: string
+    type: object
+  structs.SubscriptionExtras:
+    properties:
+      description:
+        type: string
+      metadata:
+        additionalProperties:
+          type: string
+        type: object
+      price_id:
+        type: string
+      quantity:
+        type: integer
+      term:
+        $ref: '#/definitions/structs.SubscriptionTerm'
+      unit_amount:
+        type: integer
+    type: object
+  structs.SubscriptionResponse:
+    properties:
+      amount:
+        type: integer
+      cancel_at_period_end:
+        type: boolean
+      currency:
+        type: string
+      current_period_end:
+        type: integer
+      current_period_start:
+        type: integer
+      customer_id:
+        type: string
+      extras:
+        items:
+          $ref: '#/definitions/structs.SubscriptionExtras'
+        type: array
+      meta_data:
+        $ref: '#/definitions/structs.PlanMeta'
+      plan:
+        type: string
+      plan_id:
+        type: string
+      status:
+        type: string
+      subscription_id:
+        type: string
+      trial_end:
+        type: integer
+      trial_start:
+        type: integer
+    type: object
+  structs.SubscriptionTerm:
+    enum:
+    - monthly
+    - yearly
+    type: string
+    x-enum-varnames:
+    - SubscriptionTermMonthly
+    - SubscriptionTermYearly
+  structs.ThrottleConfig:
+    properties:
+      deadline:
+        allOf:
+        - $ref: '#/definitions/time.Duration'
+        description: |-
+          Deadline caps how long a queued webhook may wait for delivery,
+          measured from when it was received. Zero falls through to
+          DefaultThrottleDeadline. Webhooks older than the deadline are dropped
+          (marked failed) instead of delivered.
+      enabled:
+        description: Enabled toggles the whole feature for this output.
+        type: boolean
+      interval:
+        description: |-
+          Interval is ThrottleIntervalSecond / Minute / Hour. Used only in
+          ThrottleModeRate.
+        type: string
+      max_concurrent:
+        description: |-
+          MaxConcurrent is the maximum number of in-flight deliveries. Used
+          only in ThrottleModeConcurrency. 1 means serial delivery.
+        type: integer
+      max_queue_depth:
+        description: |-
+          MaxQueueDepth bounds how many webhooks may sit in the queue for this
+          output. Zero means unbounded. When exceeded, the ingester rejects
+          new webhooks with HTTP 429.
+        type: integer
+      mode:
+        description: Mode is ThrottleModeRate or ThrottleModeConcurrency.
+        type: string
+      rate:
+        description: |-
+          Rate is the maximum number of deliveries per Interval. Used only in
+          ThrottleModeRate.
+        type: integer
+    type: object
+  structs.Tunnel:
+    properties:
+      account_id:
+        type: string
+      addr:
+        description: |-
+          Addr specifies TCP address server would listen on, it's required
+          for TCP tunnels.
+        type: string
+      agent_id:
+        description: |-
+          AgentID is used by the ingress controller and is
+          randomly generated on startup. Once controller is running
+          it will send periodic updates to indicate that it's still running.
+        type: string
+      auth:
+        $ref: '#/definitions/structs.TunnelAuth'
+      created_at:
+        type: integer
+      crypto:
+        description: crypto types, used to issue lets encrypt certs
+        type: string
+      description:
+        type: string
+      destination:
+        description: destination host, defaults to 127.0.0.1:8000
+        type: string
+      features:
+        $ref: '#/definitions/structs.Metadata'
+      group:
+        description: |-
+          optional tunnel group, primarily used by the ingress to subscribe
+          to specific group of tunnels
+        type: string
+      host:
+        description: |-
+          tunnel's subdomain, random for free tier
+          or named for paid subs
+        type: string
+      id:
+        type: string
+      ingress_rules:
+        $ref: '#/definitions/structs.JSONB'
+      mode:
+        $ref: '#/definitions/structs.TunnelMode'
+      name:
+        description: tunnel name
+        type: string
+      protocol:
+        description: tunnel protocol - http/tcp
+        type: string
+      region:
+        description: optional tunnel region
+        type: string
+      updated_at:
+        type: integer
+    type: object
+  structs.TunnelAuth:
+    properties:
+      created_at:
+        type: integer
+      id:
+        type: string
+      password:
+        type: string
+      token:
+        type: string
+      type:
+        $ref: '#/definitions/structs.AuthType'
+      updated_at:
+        type: integer
+      username:
+        type: string
+    type: object
+  structs.TunnelMode:
+    enum:
+    - 0
+    - 1
+    type: integer
+    x-enum-varnames:
+    - TunnelModeInactive
+    - TunnelModeActive
+  structs.UpdateAPIKeyStatusRequest:
+    properties:
+      enabled:
+        type: boolean
+    type: object
+  structs.UpdateAPIKeyStatusResponse:
+    properties:
+      enabled:
+        type: boolean
+    type: object
+  structs.UpdateFunctionRequest:
+    properties:
+      account_id:
+        type: string
+      driver:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      payload:
+        type: string
+    type: object
+  structs.Usage:
+    properties:
+      account_id:
+        type: string
+      agents:
+        description: agents currently connected
+        type: integer
+      created_at:
+        type: string
+      inputs:
+        type: integer
+      outputs:
+        type: integer
+      tokens:
+        type: integer
+      tunnels:
+        type: integer
+      webhooks:
+        type: integer
+    type: object
+  structs.Variable:
+    properties:
+      account_id:
+        type: string
+      created_at:
+        type: string
+      function_id:
+        type: string
+      key:
+        type: string
+      updated_at:
+        type: string
+      value:
+        type: string
+    type: object
+  structs.WebhooksCount:
+    properties:
+      account_id:
+        description: account that it belongs to
+        type: string
+      created_at:
+        type: string
+      date:
+        description: beginning of the day for which the webhooks are calculated
+        type: string
+      failed:
+        type: integer
+      id:
+        type: string
+      preparing:
+        description: Potential webhook statuses
+        type: integer
+      received:
+        type: integer
+      rejected:
+        type: integer
+      sent:
+        type: integer
+      stalled:
+        type: integer
+      term:
+        allOf:
+        - $ref: '#/definitions/structs.WebhooksCountTerm'
+        description: daily/monthly term of the calculation
+      updated_at:
+        type: string
+    type: object
+  structs.WebhooksCountTerm:
+    enum:
+    - 0
+    - 1
+    type: integer
+    x-enum-varnames:
+    - WebhooksCountTermDaily
+    - WebhooksCountTermMonthly
+  time.Duration:
+    enum:
+    - -9223372036854775808
+    - 9223372036854775807
+    - 1
+    - 1000
+    - 1000000
+    - 1000000000
+    - 60000000000
+    - 3600000000000
+    type: integer
+    x-enum-varnames:
+    - minDuration
+    - maxDuration
+    - Nanosecond
+    - Microsecond
+    - Millisecond
+    - Second
+    - Minute
+    - Hour
+host: my.webhookrelay.com
+info:
+  contact:
+    email: info@webhookrelay.com
+    name: WebhookRelay support
+    url: https://my.webhookrelay.com/
+  description: This is the WebhookRelay API.
+  title: WebhookRelay API reference
+  version: "0.1"
+paths:
+  /v1/account/api-key:
+    get:
+      consumes:
+      - application/json
+      description: Get the account API key. If no key exists, a new one will be generated.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.AccountAPIKey'
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get account API key
+      tags:
+      - account
+    post:
+      consumes:
+      - application/json
+      description: Generate a new API key for the account, replacing the existing
+        one.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.AccountAPIKey'
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Regenerate account API key
+      tags:
+      - account
+    put:
+      consumes:
+      - application/json
+      description: Enable or disable the account API key without regenerating it.
+      parameters:
+      - description: API key status
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/structs.UpdateAPIKeyStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.UpdateAPIKeyStatusResponse'
+        "400":
+          description: Bad request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Enable or disable account API key
+      tags:
+      - account
+  /v1/account/mfa:
+    delete:
+      consumes:
+      - application/json
+      description: Disable MFA after validating a current authenticator token.
+      parameters:
+      - description: Authenticator token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.mfaConfirmRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.mfaStatusResponse'
+      security:
+      - BearerAuth: []
+      summary: Disable MFA
+      tags:
+      - account
+  /v1/account/mfa/confirm:
+    post:
+      consumes:
+      - application/json
+      description: Enable MFA after validating a token from the pending TOTP secret.
+      parameters:
+      - description: Authenticator token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.mfaConfirmRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.mfaStatusResponse'
+      security:
+      - BearerAuth: []
+      summary: Confirm MFA setup
+      tags:
+      - account
+  /v1/account/mfa/setup:
+    post:
+      consumes:
+      - application/json
+      description: Generate a TOTP secret and QR code for the authenticated account
+        or sub-account.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.mfaSetupResponse'
+      security:
+      - BearerAuth: []
+      summary: Start MFA setup
+      tags:
+      - account
+  /v1/admin/connected-clients:
+    get:
+      consumes:
+      - application/json
+      description: Get list of all connected clients across all accounts from the
+        state tracker service.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.AdminConnectedClientsResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+        "503":
+          description: Service Unavailable
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get all connected clients (admin)
+      tags:
+      - admin
+  /v1/auth/mfa/verify:
+    post:
+      consumes:
+      - application/json
+      description: Exchange an MFA challenge token and authenticator code for a session
+        token.
+      parameters:
+      - description: MFA challenge and authenticator token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.mfaVerifyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.loginResponse'
+      summary: Verify MFA login
+      tags:
+      - auth
+  /v1/billing-details:
+    get:
+      consumes:
+      - application/json
+      description: Get the billing details for the authenticated account
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.BillingDetails'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get billing details
+      tags:
+      - billing
+    put:
+      consumes:
+      - application/json
+      description: Update the billing details for the authenticated account
+      parameters:
+      - description: Billing details
+        in: body
+        name: billingDetails
+        required: true
+        schema:
+          $ref: '#/definitions/structs.BillingDetails'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.BillingDetails'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "412":
+          description: Precondition Failed
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Update billing details
+      tags:
+      - billing
+  /v1/buckets:
+    get:
+      consumes:
+      - application/json
+      description: Get list of all buckets for the authenticated account
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/structs.Bucket'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List account buckets
+      tags:
+      - buckets
+    post:
+      consumes:
+      - application/json
+      description: Create a new webhook bucket for the authenticated account
+      parameters:
+      - description: Bucket configuration
+        in: body
+        name: bucket
+        required: true
+        schema:
+          $ref: '#/definitions/structs.Bucket'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/structs.Bucket'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "412":
+          description: Precondition Failed
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Create a new bucket
+      tags:
+      - buckets
+  /v1/buckets/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a bucket by ID. Bucket must not have any inputs or outputs
+        unless force parameter is used
+      parameters:
+      - description: Bucket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Force delete even if bucket has inputs or outputs
+        in: query
+        name: force
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Response'
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "412":
+          description: Precondition Failed
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Delete bucket
+      tags:
+      - buckets
+    get:
+      consumes:
+      - application/json
+      description: Get details of a specific bucket by ID
+      parameters:
+      - description: Bucket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.Bucket'
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get bucket details
+      tags:
+      - buckets
+    put:
+      consumes:
+      - application/json
+      description: Update an existing bucket configuration
+      parameters:
+      - description: Bucket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated bucket configuration
+        in: body
+        name: bucket
+        required: true
+        schema:
+          $ref: '#/definitions/structs.Bucket'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.Bucket'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "412":
+          description: Precondition Failed
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Update bucket
+      tags:
+      - buckets
+  /v1/buckets/{id}/inputs:
+    post:
+      consumes:
+      - application/json
+      description: Create a new input endpoint for a bucket
+      parameters:
+      - description: Bucket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Input configuration
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/structs.Input'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/structs.Input'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "412":
+          description: Precondition Failed
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Create input
+      tags:
+      - inputs
+  /v1/buckets/{id}/inputs/{detailed}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete an input endpoint by ID
+      parameters:
+      - description: Bucket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Input ID
+        in: path
+        name: detailed
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Response'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Delete input
+      tags:
+      - inputs
+    put:
+      consumes:
+      - application/json
+      description: Update an existing input endpoint configuration
+      parameters:
+      - description: Bucket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Input ID
+        in: path
+        name: detailed
+        required: true
+        type: string
+      - description: Updated input configuration
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/structs.Input'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.Input'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "412":
+          description: Precondition Failed
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Update input
+      tags:
+      - inputs
+  /v1/buckets/{id}/logs/{logId}:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific webhook log from one
+        bucket
+      parameters:
+      - description: Bucket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Log ID
+        in: path
+        name: logId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.Log'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get bucket-scoped log details from warehouse
+      tags:
+      - logs
+  /v1/buckets/{id}/outputs:
+    post:
+      consumes:
+      - application/json
+      description: Create a new output destination for a bucket
+      parameters:
+      - description: Bucket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Output configuration
+        in: body
+        name: output
+        required: true
+        schema:
+          $ref: '#/definitions/structs.Output'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/structs.Output'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "402":
+          description: Payment Required
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "412":
+          description: Precondition Failed
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Create output
+      tags:
+      - outputs
+  /v1/buckets/{id}/outputs/{detailed}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete an output destination by ID
+      parameters:
+      - description: Bucket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Output ID
+        in: path
+        name: detailed
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Response'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Delete output
+      tags:
+      - outputs
+    put:
+      consumes:
+      - application/json
+      description: Update an existing output destination configuration
+      parameters:
+      - description: Bucket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Output ID
+        in: path
+        name: detailed
+        required: true
+        type: string
+      - description: Updated output configuration
+        in: body
+        name: output
+        required: true
+        schema:
+          $ref: '#/definitions/structs.Output'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.Output'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "412":
+          description: Precondition Failed
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Update output
+      tags:
+      - outputs
+  /v1/buckets/{id}/outputs/{detailed}/rules:
+    delete:
+      description: Delete filtering rules from an output destination
+      parameters:
+      - description: Bucket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Output ID
+        in: path
+        name: detailed
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.Output'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Delete output rules
+      tags:
+      - outputs
+    put:
+      description: Update filtering rules for an output destination
+      parameters:
+      - description: Bucket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Output ID
+        in: path
+        name: detailed
+        required: true
+        type: string
+      - description: Output rules configuration
+        in: body
+        name: rules
+        required: true
+        schema:
+          type: object
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.Output'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Update output rules
+      tags:
+      - outputs
+  /v1/buckets/{id}/service-connection-inputs:
+    get:
+      consumes:
+      - application/json
+      description: Get all service connection inputs for a specific bucket
+      parameters:
+      - description: Bucket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/structs.ServiceConnectionInput'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: List service connection inputs for a bucket
+      tags:
+      - service-connection-inputs
+    post:
+      consumes:
+      - application/json
+      description: Create a new service connection input for a bucket
+      parameters:
+      - description: Bucket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Service connection input configuration
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/structs.ServiceConnectionInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/structs.ServiceConnectionInput'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Create service connection input
+      tags:
+      - service-connection-inputs
+  /v1/buckets/{id}/service-connection-inputs/{detailed}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a service connection input by ID
+      parameters:
+      - description: Bucket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Service Connection Input ID
+        in: path
+        name: detailed
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Delete service connection input
+      tags:
+      - service-connection-inputs
+    put:
+      consumes:
+      - application/json
+      description: Update a service connection input by ID
+      parameters:
+      - description: Bucket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Service Connection Input ID
+        in: path
+        name: detailed
+        required: true
+        type: string
+      - description: Service connection input configuration
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/structs.ServiceConnectionInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.ServiceConnectionInput'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Update service connection input
+      tags:
+      - service-connection-inputs
+  /v1/buckets/{id}/service-connection-outputs:
+    get:
+      consumes:
+      - application/json
+      description: Get all service connection outputs for a specific bucket
+      parameters:
+      - description: Bucket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/structs.ServiceConnectionOutput'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: List service connection outputs for a bucket
+      tags:
+      - service-connection-outputs
+    post:
+      consumes:
+      - application/json
+      description: Create a new service connection output for a bucket
+      parameters:
+      - description: Bucket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Service connection output configuration
+        in: body
+        name: output
+        required: true
+        schema:
+          $ref: '#/definitions/structs.ServiceConnectionOutput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/structs.ServiceConnectionOutput'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Create service connection output
+      tags:
+      - service-connection-outputs
+  /v1/buckets/{id}/service-connection-outputs/{detailed}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a service connection output by ID
+      parameters:
+      - description: Bucket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Service Connection Output ID
+        in: path
+        name: detailed
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Delete service connection output
+      tags:
+      - service-connection-outputs
+    put:
+      consumes:
+      - application/json
+      description: Update a service connection output by ID
+      parameters:
+      - description: Bucket ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Service Connection Output ID
+        in: path
+        name: detailed
+        required: true
+        type: string
+      - description: Service connection output configuration
+        in: body
+        name: output
+        required: true
+        schema:
+          $ref: '#/definitions/structs.ServiceConnectionOutput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.ServiceConnectionOutput'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Update service connection output
+      tags:
+      - service-connection-outputs
+  /v1/checkout:
+    post:
+      consumes:
+      - application/json
+      description: Initiates stripe checkout session, new subscription will be created
+      parameters:
+      - description: Plan request
+        in: body
+        name: planReq
+        required: true
+        schema:
+          $ref: '#/definitions/api.planChangeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.planChangeResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "412":
+          description: Precondition Failed
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Initiates stripe checkout session, new subscription will be created
+      tags:
+      - billing
+  /v1/checkout-setup:
+    post:
+      consumes:
+      - application/json
+      description: Start a checkout session setup for the authenticated account
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.planChangeResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Start checkout session setup
+      tags:
+      - billing
+  /v1/config:
+    get:
+      consumes:
+      - application/json
+      description: Get the server config
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.ServerConfig'
+      security:
+      - BearerAuth: []
+      summary: Get server config
+      tags:
+      - config
+  /v1/connected-clients:
+    get:
+      consumes:
+      - application/json
+      description: Get list of all connected clients for the authenticated account
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.ConnectedClient'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get connected clients
+      tags:
+      - connected-clients
+  /v1/crons:
+    get:
+      consumes:
+      - application/json
+      description: Get list of all cron jobs for the authenticated account
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/structs.Cron'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List cron jobs
+      tags:
+      - crons
+    post:
+      consumes:
+      - application/json
+      description: Create a new scheduled cron job
+      parameters:
+      - description: Cron job configuration
+        in: body
+        name: cron
+        required: true
+        schema:
+          $ref: '#/definitions/structs.Cron'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/structs.Cron'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Create cron job
+      tags:
+      - crons
+  /v1/crons/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a cron job by ID
+      parameters:
+      - description: Cron ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Delete cron job
+      tags:
+      - crons
+    get:
+      consumes:
+      - application/json
+      description: Get details of a specific cron job by ID
+      parameters:
+      - description: Cron ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.Cron'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get cron job
+      tags:
+      - crons
+    put:
+      consumes:
+      - application/json
+      description: Update an existing cron job configuration
+      parameters:
+      - description: Cron ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated cron job configuration
+        in: body
+        name: cron
+        required: true
+        schema:
+          $ref: '#/definitions/structs.Cron'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.Cron'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Update cron job
+      tags:
+      - crons
+  /v1/domains:
+    get:
+      consumes:
+      - application/json
+      description: Get list of all domains for the authenticated account
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/structs.Domain'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List account domains
+      tags:
+      - domains
+    post:
+      consumes:
+      - application/json
+      description: Reserve a domain for the authenticated account. Domain must be
+        valid and not already taken.
+      parameters:
+      - description: Domain configuration
+        in: body
+        name: domain
+        required: true
+        schema:
+          $ref: '#/definitions/structs.Domain'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/structs.Domain'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "412":
+          description: Precondition Failed
+          schema:
+            type: string
+        "451":
+          description: Unavailable For Legal Reasons
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Create domain reservation
+      tags:
+      - domains
+  /v1/domains/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a reserved domain by ID. Domain must not be in use by any
+        inputs or tunnels.
+      parameters:
+      - description: Domain ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Response'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "412":
+          description: Precondition Failed
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Delete domain reservation
+      tags:
+      - domains
+  /v1/events:
+    get:
+      consumes:
+      - application/json
+      description: Stream new webhook deliveries since the last poll. Cursor-bound
+        to the (account, bucket, output) tuple the first call established.
+      parameters:
+      - description: Bucket ID (required on first call; cursor carries it on subsequent
+          calls)
+        in: query
+        name: bucket
+        type: string
+      - description: Output ID filter
+        in: query
+        name: output
+        type: string
+      - description: Opaque resume cursor from a previous call
+        in: query
+        name: cursor
+        type: string
+      - description: Page size (default 100)
+        in: query
+        name: limit
+        type: integer
+      - description: Lookback window on the first call (default 24h, Go duration syntax)
+        in: query
+        name: max_age
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.eventResponse'
+        "503":
+          description: turbostore v2 polling is not enabled
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Poll webhook events (cursor-mode)
+      tags:
+      - logs
+  /v1/exec-logs/{id}:
+    get:
+      description: |-
+        Look up a function execution log by its id without
+        requiring the function id in the URL. Useful for the
+        webhook-log-detail UI, where the log only knows the
+        ExecuteLog id (not which function emitted it). The
+        executing function id is embedded on the row.
+      parameters:
+      - description: Execution Log ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.ExecuteLog'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get a function execution log by id (account-scoped)
+      tags:
+      - functions
+  /v1/functions:
+    get:
+      consumes:
+      - application/json
+      description: List the functions for the authenticated account
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/structs.Function'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: List functions
+      tags:
+      - functions
+    post:
+      consumes:
+      - application/json
+      description: Create a new function
+      parameters:
+      - description: Function configuration
+        in: body
+        name: functionPayload
+        required: true
+        schema:
+          $ref: '#/definitions/structs.CreateFunctionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/structs.Function'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Create function
+      tags:
+      - functions
+  /v1/functions-generate:
+    post:
+      consumes:
+      - application/json
+      description: Generate a new function based on the provided input and output
+        payloads
+      parameters:
+      - description: Function generation request
+        in: body
+        name: generateRequest
+        required: true
+        schema:
+          $ref: '#/definitions/structs.GenerateFunctionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.GenerateFunctionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Generate function
+      tags:
+      - functions
+  /v1/functions/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a function by its ID
+      parameters:
+      - description: Function ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.DeleteFunctionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Delete function
+      tags:
+      - functions
+    get:
+      consumes:
+      - application/json
+      description: Get a function by its ID
+      parameters:
+      - description: Function ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.Function'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get function
+      tags:
+      - functions
+    put:
+      consumes:
+      - application/json
+      description: Update an existing function
+      parameters:
+      - description: Function ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Function configuration
+        in: body
+        name: functionPayload
+        required: true
+        schema:
+          $ref: '#/definitions/structs.UpdateFunctionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.Function'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Update function
+      tags:
+      - functions
+  /v1/functions/{id}/config:
+    get:
+      consumes:
+      - application/json
+      description: List the configuration values for a given function
+      parameters:
+      - description: Function ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/structs.Variable'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: List function config
+      tags:
+      - functions
+    put:
+      consumes:
+      - application/json
+      description: Set the configuration value for a given function
+      parameters:
+      - description: Function ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Configuration value
+        in: body
+        name: config
+        required: true
+        schema:
+          $ref: '#/definitions/api.setFunctionConfigRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.Variable'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Set function config
+      tags:
+      - functions
+  /v1/functions/{id}/config/{key}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete the configuration value for a given function
+      parameters:
+      - description: Function ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Configuration key
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.DeleteVariableResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Delete function config value
+      tags:
+      - functions
+  /v1/functions/{id}/invoke:
+    post:
+      consumes:
+      - application/json
+      description: Invoke a function by its ID
+      parameters:
+      - description: Function ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.ExecuteResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Invoke function
+      tags:
+      - functions
+  /v1/functions/{id}/logs:
+    get:
+      consumes:
+      - application/json
+      description: Get the logs for a function
+      parameters:
+      - description: Function ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.ExecuteLogResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get function logs
+      tags:
+      - functions
+  /v1/functions/{id}/logs/{logId}:
+    get:
+      consumes:
+      - application/json
+      description: Get the logs for a function
+      parameters:
+      - description: Function ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.ExecuteLogResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get function logs
+      tags:
+      - functions
+  /v1/logs:
+    get:
+      consumes:
+      - application/json
+      description: Get paginated list of webhook logs from warehouse for the authenticated
+        account
+      parameters:
+      - description: Filter by bucket ID
+        in: query
+        name: bucket
+        required: true
+        type: string
+      - description: Number of results per page
+        in: query
+        name: limit
+        type: integer
+      - description: Offset for pagination
+        in: query
+        name: offset
+        type: integer
+      - description: From date (YYYY-MM-DD or RFC3339)
+        in: query
+        name: from
+        type: string
+      - description: To date (YYYY-MM-DD or RFC3339)
+        in: query
+        name: to
+        type: string
+      - description: Filter by status (sent, failed, stalled, received, rejected)
+        in: query
+        name: status
+        type: string
+      - description: Opaque pagination cursor (turbostore accounts; takes precedence
+          over offset)
+        in: query
+        name: cursor
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.logsResponse'
+      security:
+      - BearerAuth: []
+      summary: List webhook logs from warehouse (paginated)
+      tags:
+      - logs
+  /v1/logs-stats:
+    get:
+      consumes:
+      - application/json
+      description: Get account log statistics
+      parameters:
+      - description: From date (YYYY-MM-DD)
+        in: query
+        name: from
+        type: string
+      - description: To date (YYYY-MM-DD)
+        in: query
+        name: to
+        type: string
+      - description: Filter by bucket ID
+        in: query
+        name: bucketId
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/structs.LogsStats'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Get account log statistics
+      tags:
+      - logs
+  /v1/logs/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific webhook log from warehouse
+      parameters:
+      - description: Log ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.Log'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get log details from warehouse
+      tags:
+      - logs
+    put:
+      description: Update a webhook log. Can be used to update status, response body,
+        headers and status code. Only modifiable within first 10 seconds.
+      parameters:
+      - description: Log ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated log data
+        in: body
+        name: log
+        required: true
+        schema:
+          $ref: '#/definitions/structs.Log'
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Update log
+      tags:
+      - logs
+  /v1/logs/{id}/action:
+    post:
+      consumes:
+      - application/json
+      description: Perform an action on a webhook log from warehouse (e.g., resend)
+      parameters:
+      - description: Log ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Action request
+        in: body
+        name: action
+        required: true
+        schema:
+          $ref: '#/definitions/api.actionLogRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Perform action on log from warehouse
+      tags:
+      - logs
+  /v1/logs/histogram:
+    get:
+      description: Returns 1-minute resolution counts split by status plus
+      parameters:
+      - description: 'From timestamp (RFC3339 or YYYY-MM-DD); default: 1h ago'
+        in: query
+        name: from
+        type: string
+      - description: 'To timestamp (RFC3339 or YYYY-MM-DD); default: now'
+        in: query
+        name: to
+        type: string
+      - description: Filter to a single bucket
+        in: query
+        name: bucket_id
+        type: string
+      - description: Filter to a single output
+        in: query
+        name: output_id
+        type: string
+      - description: Filter to a single status (sent, failed, stalled, received, rejected,
+          preparing)
+        in: query
+        name: status
+        type: string
+      - description: Filter to a single HTTP status code
+        in: query
+        name: status_code
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.logsHistogramResponse'
+      security:
+      - BearerAuth: []
+      summary: Per-minute log histogram for the explorer timeline
+      tags:
+      - logs
+  /v1/managed-certs:
+    get:
+      consumes:
+      - application/json
+      description: Get list of all managed certificates for the authenticated account
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List managed certificates
+      tags:
+      - managed-certs
+    post:
+      consumes:
+      - application/json
+      description: Create a new managed SSL certificate for a domain
+      parameters:
+      - description: Managed certificate configuration
+        in: body
+        name: cert
+        required: true
+        schema:
+          $ref: '#/definitions/api.createManagedCertRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.Response'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "451":
+          description: Unavailable For Legal Reasons
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Create managed certificate
+      tags:
+      - managed-certs
+  /v1/managed-certs/{id}:
+    delete:
+      description: Delete a managed certificate by ID
+      parameters:
+      - description: Managed certificate ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Response'
+      security:
+      - BearerAuth: []
+      summary: Delete managed certificate
+      tags:
+      - managed-certs
+  /v1/news:
+    get:
+      consumes:
+      - application/json
+      description: Get all news entries
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/structs.NewsEntry'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get news entries
+      tags:
+      - news
+    post:
+      consumes:
+      - application/json
+      description: Create a new news entry
+      parameters:
+      - description: News entry
+        in: body
+        name: newsEntry
+        required: true
+        schema:
+          $ref: '#/definitions/structs.NewsEntryCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.Response'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Create news entry
+      tags:
+      - news
+  /v1/news/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a news entry by ID
+      parameters:
+      - description: News entry ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Response'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Delete news entry
+      tags:
+      - news
+  /v1/plans/optional-items:
+    get:
+      consumes:
+      - application/json
+      description: Returns optional add-on items (like extra webhooks) available for
+        each plan
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.listPlanOptionalItemsResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: List optional items for plans
+      tags:
+      - billing
+  /v1/service-connections:
+    get:
+      consumes:
+      - application/json
+      description: Get all service connections for the authenticated account
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/structs.ServiceConnection'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List service connections
+      tags:
+      - service-connections
+    post:
+      consumes:
+      - application/json
+      description: Create a new service connection
+      parameters:
+      - description: Service connection configuration
+        in: body
+        name: connection
+        required: true
+        schema:
+          $ref: '#/definitions/structs.ServiceConnection'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/structs.ServiceConnection'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Create service connection
+      tags:
+      - service-connections
+  /v1/service-connections/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a service connection by ID
+      parameters:
+      - description: Service Connection ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Delete service connection
+      tags:
+      - service-connections
+    get:
+      consumes:
+      - application/json
+      description: Get details of a specific service connection by ID
+      parameters:
+      - description: Service Connection ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.ServiceConnection'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get service connection
+      tags:
+      - service-connections
+    put:
+      consumes:
+      - application/json
+      description: Update an existing service connection
+      parameters:
+      - description: Service Connection ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated service connection configuration
+        in: body
+        name: connection
+        required: true
+        schema:
+          $ref: '#/definitions/structs.ServiceConnection'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.ServiceConnection'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Update service connection
+      tags:
+      - service-connections
+  /v1/sub-accounts:
+    get:
+      consumes:
+      - application/json
+      description: Get list of all sub-accounts for the authenticated account
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/structs.SubAccount'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Get sub-accounts
+      tags:
+      - sub-accounts
+    post:
+      consumes:
+      - application/json
+      description: Create a new sub-account for the authenticated account
+      parameters:
+      - description: Sub-account configuration
+        in: body
+        name: subAccount
+        schema:
+          $ref: '#/definitions/structs.SubAccountCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/structs.SubAccountCreateResponse'
+      security:
+      - BearerAuth: []
+      summary: Create sub-account
+      tags:
+      - sub-accounts
+  /v1/sub-accounts/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a sub-account for the authenticated account
+      parameters:
+      - description: Sub-account ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: Delete sub-account
+      tags:
+      - sub-accounts
+  /v1/sub-accounts/{id}/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Reset the password for a sub-account
+      parameters:
+      - description: Sub-account ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/structs.SubAccountCreateResponse'
+      security:
+      - BearerAuth: []
+      summary: Reset sub-account password
+      tags:
+      - sub-accounts
+  /v1/subscription:
+    get:
+      consumes:
+      - application/json
+      description: Returns current subscription info
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.SubscriptionResponse'
+      security:
+      - BearerAuth: []
+      summary: Returns current subscription info
+      tags:
+      - subscriptions
+  /v1/subscription-metadata:
+    get:
+      consumes:
+      - application/json
+      description: Returns subscription metadata
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.PlanMeta'
+      security:
+      - BearerAuth: []
+      summary: Returns subscription metadata
+      tags:
+      - subscriptions
+  /v1/subscription/cancel:
+    post:
+      consumes:
+      - application/json
+      description: Schedules the subscription to be cancelled at the end of the current
+        billing period
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Response'
+      security:
+      - BearerAuth: []
+      summary: Cancel subscription at the end of the current billing period
+      tags:
+      - subscriptions
+  /v1/tokens:
+    get:
+      description: Get list of all access tokens for the authenticated account
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/structs.AccessToken'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List access tokens
+      tags:
+      - tokens
+    post:
+      description: Create a new access token for the authenticated account
+      parameters:
+      - description: Access token configuration
+        in: body
+        name: token
+        schema:
+          $ref: '#/definitions/api.createAccessTokenRequest'
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.accessTokenCreateResponse'
+        "412":
+          description: Precondition Failed
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Create access token
+      tags:
+      - tokens
+  /v1/tokens/{id}:
+    delete:
+      description: Delete an access token by ID
+      parameters:
+      - description: Access token ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Delete access token
+      tags:
+      - tokens
+    put:
+      description: Update an existing access token configuration
+      parameters:
+      - description: Access token ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated access token configuration
+        in: body
+        name: token
+        required: true
+        schema:
+          $ref: '#/definitions/api.updateAccessTokenRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.AccessToken'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Update access token
+      tags:
+      - tokens
+  /v1/tunnels:
+    get:
+      consumes:
+      - application/json
+      description: Get list of all tunnels for the authenticated account
+      parameters:
+      - description: Filter by host
+        in: query
+        name: host
+        type: string
+      - description: Filter by name
+        in: query
+        name: name
+        type: string
+      - description: Filter by group
+        in: query
+        name: group
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/structs.Tunnel'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List tunnels
+      tags:
+      - tunnels
+    post:
+      consumes:
+      - application/json
+      description: Create a new tunnel for the authenticated account
+      parameters:
+      - description: Tunnel configuration
+        in: body
+        name: tunnel
+        required: true
+        schema:
+          $ref: '#/definitions/structs.CreateTunnelRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/structs.Tunnel'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "412":
+          description: Precondition Failed
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Create tunnel
+      tags:
+      - tunnels
+  /v1/tunnels/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a tunnel by ID
+      parameters:
+      - description: Tunnel ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Response'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Delete tunnel
+      tags:
+      - tunnels
+    get:
+      consumes:
+      - application/json
+      description: Get details of a specific tunnel by ID
+      parameters:
+      - description: Tunnel ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.Tunnel'
+        "404":
+          description: Not Found
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get tunnel details
+      tags:
+      - tunnels
+    put:
+      consumes:
+      - application/json
+      description: Update an existing tunnel configuration
+      parameters:
+      - description: Tunnel ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated tunnel configuration
+        in: body
+        name: tunnel
+        required: true
+        schema:
+          $ref: '#/definitions/structs.Tunnel'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.Tunnel'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "412":
+          description: Precondition Failed
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Update tunnel
+      tags:
+      - tunnels
+  /v1/usage:
+    get:
+      consumes:
+      - application/json
+      description: Get usage for the authenticated account
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.CombinedUsage'
+      security:
+      - BearerAuth: []
+      summary: Get current account usage
+      tags:
+      - usage
+  /v1/usages/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get usage for a specific account
+      parameters:
+      - description: Account ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.CombinedUsage'
+      security:
+      - BearerAuth: []
+      summary: Get account usage
+      tags:
+      - usage
+schemes:
+- https
+swagger: "2.0"
