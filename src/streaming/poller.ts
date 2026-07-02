@@ -63,10 +63,14 @@ export class WebhookPoller implements AsyncIterable<WebhookLog> {
     while (!this.stopped && !signal?.aborted) {
       let page: EventsResponse;
       try {
-        page = await this.http.get<EventsResponse>("/v1/events", {
-          query: { bucket, output, limit, max_age: maxAge },
-          signal,
-        });
+        page = await this.http.unwrap(
+          this.http.api.v1.eventsList(
+            { bucket, output, limit, max_age: maxAge },
+            { signal },
+          ),
+          "GET",
+          "/v1/events",
+        );
       } catch (err) {
         if (this.stopped || signal?.aborted) return;
         if (err instanceof WebhookRelayConnectionError) {

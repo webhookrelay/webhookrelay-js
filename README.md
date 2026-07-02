@@ -34,6 +34,37 @@ relay.webhooks.subscribe({
 });
 ```
 
+Or use the top-level helpers for the common forwarding and receiving paths:
+
+```ts
+import { configure, subscribe } from "@webhookrelay/sdk";
+
+const { endpointUrl } = await configure({
+  bucket: "orders",
+  destination: "https://example.com/webhook",
+});
+
+console.log("Send webhooks to:", endpointUrl);
+
+for await (const webhook of events("orders")) {
+  console.log(webhook.method, webhook.body);
+}
+
+const sub = subscribe("orders", {
+  onWebhook: (w) => console.log(w.method, w.body),
+});
+```
+
+For durable pull delivery, use `events()`:
+
+```ts
+import { events } from "@webhookrelay/sdk";
+
+for await (const webhook of events("orders")) {
+  console.log(webhook.method, webhook.body);
+}
+```
+
 ## Authentication
 
 Create credentials at [my.webhookrelay.com/tokens](https://my.webhookrelay.com/tokens).

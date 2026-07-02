@@ -27,9 +27,13 @@ export class OutputsResource {
 
   /** Create an output on a bucket. */
   create(bucketId: string, params: CreateOutputParams): Promise<Output> {
-    return this.http.post<Output>(
-      `/v1/buckets/${encodeURIComponent(bucketId)}/outputs`,
-      { body: outputParams(params) },
+    return this.http.unwrap(
+      this.http.api.v1.bucketsOutputsCreate(
+        encodeURIComponent(bucketId),
+        outputParams(params),
+      ),
+      "POST",
+      "/v1/buckets/{id}/outputs",
     );
   }
 
@@ -39,16 +43,26 @@ export class OutputsResource {
     outputId: string,
     params: UpdateOutputParams,
   ): Promise<Output> {
-    return this.http.put<Output>(
-      `/v1/buckets/${encodeURIComponent(bucketId)}/outputs/${encodeURIComponent(outputId)}`,
-      { body: outputParams(params) },
+    return this.http.unwrap(
+      this.http.api.v1.bucketsOutputsUpdate(
+        encodeURIComponent(bucketId),
+        encodeURIComponent(outputId),
+        outputParams(params),
+      ),
+      "PUT",
+      "/v1/buckets/{id}/outputs/{outputId}",
     );
   }
 
   /** Delete an output. */
   delete(bucketId: string, outputId: string): Promise<void> {
-    return this.http.delete<void>(
-      `/v1/buckets/${encodeURIComponent(bucketId)}/outputs/${encodeURIComponent(outputId)}`,
+    return this.http.unwrap(
+      this.http.api.v1.bucketsOutputsDelete(
+        encodeURIComponent(bucketId),
+        encodeURIComponent(outputId),
+      ),
+      "DELETE",
+      "/v1/buckets/{id}/outputs/{outputId}",
     );
   }
 
@@ -57,16 +71,26 @@ export class OutputsResource {
    * delivered to this output — the core primitive for conditional forwarding.
    */
   setRules(bucketId: string, outputId: string, rules: Rules): Promise<Output> {
-    return this.http.put<Output>(
-      `/v1/buckets/${encodeURIComponent(bucketId)}/outputs/${encodeURIComponent(outputId)}/rules`,
-      { body: rules },
+    return this.http.unwrap(
+      this.http.api.v1.bucketsOutputsRulesUpdate(
+        encodeURIComponent(bucketId),
+        encodeURIComponent(outputId),
+        rules,
+      ),
+      "PUT",
+      "/v1/buckets/{id}/outputs/{outputId}/rules",
     );
   }
 
   /** Remove all forward rules from an output (every request is forwarded). */
   deleteRules(bucketId: string, outputId: string): Promise<void> {
-    return this.http.delete<void>(
-      `/v1/buckets/${encodeURIComponent(bucketId)}/outputs/${encodeURIComponent(outputId)}/rules`,
+    return this.http.unwrap(
+      this.http.api.v1.bucketsOutputsRulesDelete(
+        encodeURIComponent(bucketId),
+        encodeURIComponent(outputId),
+      ),
+      "DELETE",
+      "/v1/buckets/{id}/outputs/{outputId}/rules",
     );
   }
 
@@ -75,8 +99,10 @@ export class OutputsResource {
    * this fetches the bucket and returns its `outputs`.
    */
   async list(bucketId: string): Promise<Output[]> {
-    const bucket = await this.http.get<{ outputs?: Output[] }>(
-      `/v1/buckets/${encodeURIComponent(bucketId)}`,
+    const bucket = await this.http.unwrap<{ outputs?: Output[] }>(
+      this.http.api.v1.bucketsDetail(encodeURIComponent(bucketId)),
+      "GET",
+      "/v1/buckets/{id}",
     );
     return bucket.outputs ?? [];
   }

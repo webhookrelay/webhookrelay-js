@@ -35,20 +35,28 @@ export class FunctionsResource {
 
   /** List all functions on the account. */
   list(): Promise<WebhookFunction[]> {
-    return this.http.get<WebhookFunction[]>("/v1/functions");
+    return this.http.unwrap(
+      this.http.api.v1.functionsList(),
+      "GET",
+      "/v1/functions",
+    );
   }
 
   /** Create a JavaScript function. `driver` defaults to `"js"`. */
   create(params: CreateFunctionParams): Promise<WebhookFunction> {
-    return this.http.post<WebhookFunction>("/v1/functions", {
-      body: { driver: "js", ...params },
-    });
+    return this.http.unwrap(
+      this.http.api.v1.functionsCreate({ driver: "js", ...params }),
+      "POST",
+      "/v1/functions",
+    );
   }
 
   /** Fetch a single function by ID. */
   get(functionId: string): Promise<WebhookFunction> {
-    return this.http.get<WebhookFunction>(
-      `/v1/functions/${encodeURIComponent(functionId)}`,
+    return this.http.unwrap(
+      this.http.api.v1.functionsDetail(encodeURIComponent(functionId)),
+      "GET",
+      "/v1/functions/{id}",
     );
   }
 
@@ -57,16 +65,19 @@ export class FunctionsResource {
     functionId: string,
     params: UpdateFunctionParams,
   ): Promise<WebhookFunction> {
-    return this.http.put<WebhookFunction>(
-      `/v1/functions/${encodeURIComponent(functionId)}`,
-      { body: params },
+    return this.http.unwrap(
+      this.http.api.v1.functionsUpdate(encodeURIComponent(functionId), params),
+      "PUT",
+      "/v1/functions/{id}",
     );
   }
 
   /** Delete a function. */
   delete(functionId: string): Promise<void> {
-    return this.http.delete<void>(
-      `/v1/functions/${encodeURIComponent(functionId)}`,
+    return this.http.unwrap(
+      this.http.api.v1.functionsDelete(encodeURIComponent(functionId)),
+      "DELETE",
+      "/v1/functions/{id}",
     );
   }
 
@@ -79,7 +90,8 @@ export class FunctionsResource {
     functionId: string,
     sampleRequest?: unknown,
   ): Promise<FunctionExecuteResponse> {
-    return this.http.post<FunctionExecuteResponse>(
+    return this.http.request<FunctionExecuteResponse>(
+      "POST",
       `/v1/functions/${encodeURIComponent(functionId)}/invoke`,
       sampleRequest === undefined ? {} : { body: sampleRequest },
     );
@@ -87,8 +99,10 @@ export class FunctionsResource {
 
   /** List a function's runtime config variables. */
   listConfig(functionId: string): Promise<FunctionConfigVariable[]> {
-    return this.http.get<FunctionConfigVariable[]>(
-      `/v1/functions/${encodeURIComponent(functionId)}/config`,
+    return this.http.unwrap(
+      this.http.api.v1.functionsConfigList(encodeURIComponent(functionId)),
+      "GET",
+      "/v1/functions/{id}/config",
     );
   }
 
@@ -98,23 +112,34 @@ export class FunctionsResource {
     key: string,
     value: string,
   ): Promise<FunctionConfigVariable> {
-    return this.http.put<FunctionConfigVariable>(
-      `/v1/functions/${encodeURIComponent(functionId)}/config`,
-      { body: { key, value } },
+    return this.http.unwrap(
+      this.http.api.v1.functionsConfigUpdate(encodeURIComponent(functionId), {
+        key,
+        value,
+      }),
+      "PUT",
+      "/v1/functions/{id}/config",
     );
   }
 
   /** Delete a runtime config variable by key. */
   deleteConfig(functionId: string, key: string): Promise<void> {
-    return this.http.delete<void>(
-      `/v1/functions/${encodeURIComponent(functionId)}/config/${encodeURIComponent(key)}`,
+    return this.http.unwrap(
+      this.http.api.v1.functionsConfigDelete(
+        encodeURIComponent(functionId),
+        encodeURIComponent(key),
+      ),
+      "DELETE",
+      "/v1/functions/{id}/config/{key}",
     );
   }
 
   /** Fetch execution logs for a function. */
   logs<T = unknown>(functionId: string): Promise<T> {
-    return this.http.get<T>(
-      `/v1/functions/${encodeURIComponent(functionId)}/logs`,
+    return this.http.unwrap(
+      this.http.api.v1.functionsLogsList(encodeURIComponent(functionId)),
+      "GET",
+      "/v1/functions/{id}/logs",
     );
   }
 
@@ -123,8 +148,10 @@ export class FunctionsResource {
    * Returns the generated source (create it with {@link create}).
    */
   generate(params: GenerateFunctionParams): Promise<GenerateFunctionResponse> {
-    return this.http.post<GenerateFunctionResponse>("/v1/functions-generate", {
-      body: functionParams(params),
-    });
+    return this.http.unwrap(
+      this.http.api.v1.functionsGenerateCreate(functionParams(params)),
+      "POST",
+      "/v1/functions-generate",
+    );
   }
 }

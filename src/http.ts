@@ -1,5 +1,10 @@
 import type { ResolvedConfig } from "./config.js";
 import {
+  Api,
+  ContentType,
+  type HttpResponse,
+} from "./generated/api.js";
+import {
   WebhookRelayAPIError,
   WebhookRelayConnectionError,
 } from "./errors.js";
@@ -22,7 +27,26 @@ export interface RequestOptions {
  * timeout. Resource clients build on this; end users rarely touch it directly.
  */
 export class HttpClient {
-  constructor(private readonly config: ResolvedConfig) {}
+  readonly api: Api<null>;
+
+  constructor(private readonly config: ResolvedConfig) {
+    this.api = new Api<null>({
+      baseUrl: config.baseUrl,
+      customFetch: this.fetchWithTimeout,
+      securityWorker: () => ({
+        headers: {
+          Authorization: config.authHeader,
+        },
+      }),
+      baseApiParams: {
+        headers: {
+          Accept: "application/json",
+          "User-Agent": config.userAgent,
+          ...config.headers,
+        },
+      },
+    });
+  }
 
   get baseUrl(): string {
     return this.config.baseUrl;
@@ -60,61 +84,102 @@ export class HttpClient {
     path: string,
     options: RequestOptions = {},
   ): Promise<T> {
-    const url = this.buildUrl(path, options.query);
-
-    const headers: Record<string, string> = {
-      Authorization: this.config.authHeader,
-      Accept: "application/json",
-      "User-Agent": this.config.userAgent,
-      ...this.config.headers,
-      ...options.headers,
-    };
-
-    let bodyInit: BodyInit | undefined;
-    if (options.body !== undefined) {
-      headers["Content-Type"] = "application/json";
-      bodyInit = JSON.stringify(options.body);
-    }
-
     const { signal, cleanup } = this.makeSignal(options.signal, options.timeoutMs);
-
-    let response: Response;
     try {
-      response = await this.config.fetch(url, {
+      return await this.unwrap<T>(
+        this.api.request<T, unknown>({
+          path,
+          method,
+          query: options.query,
+          body: options.body,
+          secure: true,
+          type: ContentType.Json,
+          format: "json",
+          headers: options.headers,
+          signal,
+        }),
         method,
-        headers,
-        body: bodyInit,
-        signal,
-      });
+        path,
+      );
     } catch (err) {
+      throw await this.toError(err, method, path);
+    } finally {
       cleanup();
+    }
+  }
+
+  async unwrap<T>(
+    response: Promise<HttpResponse<unknown, unknown>>,
+    method: string,
+    path: string,
+  ): Promise<T> {
+    try {
+      const data = (await response).data;
+      return (data === null ? undefined : data) as T;
+    } catch (err) {
+      throw await this.toError(err, method, path);
+    }
+  }
+
+  private fetchWithTimeout = async (
+    input: RequestInfo | URL,
+    init: RequestInit = {},
+  ): Promise<Response> => {
+    const { signal, cleanup } = init.signal
+      ? { signal: init.signal, cleanup: () => {} }
+      : this.makeSignal(undefined, undefined);
+    try {
+      return await this.config.fetch(input, { ...init, signal });
+    } catch (err) {
+      if (err instanceof WebhookRelayConnectionError) throw err;
       if (isAbortError(err)) {
         throw new WebhookRelayConnectionError(
-          `Request ${method} ${path} was aborted or timed out`,
+          "Request was aborted or timed out",
           { cause: err },
         );
       }
       throw new WebhookRelayConnectionError(
-        `Request ${method} ${path} failed to reach ${this.config.baseUrl}`,
+        `Request failed to reach ${this.config.baseUrl}`,
         { cause: err },
       );
+    } finally {
+      cleanup();
     }
-    cleanup();
+  };
 
-    const requestId = response.headers.get("Request-Id") ?? undefined;
-    const parsed = await parseBody(response);
+  private async toError(
+    err: unknown,
+    method: string,
+    path: string,
+  ): Promise<Error> {
+    if (
+      err instanceof WebhookRelayAPIError ||
+      err instanceof WebhookRelayConnectionError
+    ) {
+      return err;
+    }
 
-    if (!response.ok) {
-      throw new WebhookRelayAPIError({
-        status: response.status,
+    if (isHttpResponse(err)) {
+      return new WebhookRelayAPIError({
+        status: err.status,
         method,
         path,
-        body: parsed,
-        requestId,
+        body: await responseErrorBody(err),
+        requestId: err.headers.get("Request-Id") ?? undefined,
       });
     }
 
-    return parsed as T;
+    if (isAbortError(err)) {
+      return new WebhookRelayConnectionError(
+        `Request ${method} ${path} was aborted or timed out`,
+        { cause: err },
+      );
+    }
+
+    return new WebhookRelayConnectionError(
+      `Request ${method} ${path} failed to reach ${this.config.baseUrl}`,
+      { cause: err },
+    );
   }
 
   private makeSignal(
@@ -143,22 +208,18 @@ export class HttpClient {
   }
 }
 
-async function parseBody(response: Response): Promise<unknown> {
-  const text = await response.text();
-  if (!text) return undefined;
-  const contentType = response.headers.get("Content-Type") ?? "";
-  if (contentType.includes("application/json")) {
-    try {
-      return JSON.parse(text);
-    } catch {
-      return text;
-    }
+async function responseErrorBody(
+  response: HttpResponse<unknown, unknown>,
+): Promise<unknown> {
+  if (!(response.error instanceof Error)) {
+    return response.error ?? response.data;
   }
-  // Some endpoints omit the JSON content-type; try anyway, fall back to text.
+
   try {
-    return JSON.parse(text);
+    const text = await response.text();
+    return text || response.error;
   } catch {
-    return text;
+    return response.error;
   }
 }
 
@@ -166,5 +227,13 @@ function isAbortError(err: unknown): boolean {
   return (
     err instanceof Error &&
     (err.name === "AbortError" || err.name === "TimeoutError")
+  );
+}
+
+function isHttpResponse(err: unknown): err is HttpResponse<unknown, unknown> {
+  return (
+    typeof Response !== "undefined" &&
+    err instanceof Response &&
+    "error" in err
   );
 }

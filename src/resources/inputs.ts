@@ -19,9 +19,13 @@ export class InputsResource {
 
   /** Create an input on a bucket. Returns the created input, whose public URL is derived from its ID. */
   create(bucketId: string, params: CreateInputParams): Promise<Input> {
-    return this.http.post<Input>(
-      `/v1/buckets/${encodeURIComponent(bucketId)}/inputs`,
-      { body: inputParams(params) },
+    return this.http.unwrap(
+      this.http.api.v1.bucketsInputsCreate(
+        encodeURIComponent(bucketId),
+        inputParams(params) as never,
+      ),
+      "POST",
+      "/v1/buckets/{id}/inputs",
     );
   }
 
@@ -31,16 +35,26 @@ export class InputsResource {
     inputId: string,
     params: UpdateInputParams,
   ): Promise<Input> {
-    return this.http.put<Input>(
-      `/v1/buckets/${encodeURIComponent(bucketId)}/inputs/${encodeURIComponent(inputId)}`,
-      { body: inputParams(params) },
+    return this.http.unwrap(
+      this.http.api.v1.bucketsInputsUpdate(
+        encodeURIComponent(bucketId),
+        encodeURIComponent(inputId),
+        inputParams(params) as never,
+      ),
+      "PUT",
+      "/v1/buckets/{id}/inputs/{inputId}",
     );
   }
 
   /** Delete an input. */
   delete(bucketId: string, inputId: string): Promise<void> {
-    return this.http.delete<void>(
-      `/v1/buckets/${encodeURIComponent(bucketId)}/inputs/${encodeURIComponent(inputId)}`,
+    return this.http.unwrap(
+      this.http.api.v1.bucketsInputsDelete(
+        encodeURIComponent(bucketId),
+        encodeURIComponent(inputId),
+      ),
+      "DELETE",
+      "/v1/buckets/{id}/inputs/{inputId}",
     );
   }
 
@@ -63,8 +77,10 @@ export class InputsResource {
    * this fetches the bucket and returns its `inputs`.
    */
   async list(bucketId: string): Promise<Input[]> {
-    const bucket = await this.http.get<{ inputs?: Input[] }>(
-      `/v1/buckets/${encodeURIComponent(bucketId)}`,
+    const bucket = await this.http.unwrap<{ inputs?: Input[] }>(
+      this.http.api.v1.bucketsDetail(encodeURIComponent(bucketId)),
+      "GET",
+      "/v1/buckets/{id}",
     );
     return bucket.inputs ?? [];
   }

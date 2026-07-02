@@ -19,29 +19,47 @@ export class BucketsResource {
 
   /** List every bucket on the account. */
   list(): Promise<Bucket[]> {
-    return this.http.get<Bucket[]>("/v1/buckets");
+    return this.http.unwrap(
+      this.http.api.v1.bucketsList(),
+      "GET",
+      "/v1/buckets",
+    );
   }
 
   /** Create a bucket. */
   create(params: CreateBucketParams): Promise<Bucket> {
-    return this.http.post<Bucket>("/v1/buckets", { body: params });
+    return this.http.unwrap(
+      this.http.api.v1.bucketsCreate(params as never),
+      "POST",
+      "/v1/buckets",
+    );
   }
 
   /** Fetch a single bucket by ID (includes its inputs and outputs). */
   get(bucketId: string): Promise<Bucket> {
-    return this.http.get<Bucket>(`/v1/buckets/${encodeURIComponent(bucketId)}`);
+    return this.http.unwrap(
+      this.http.api.v1.bucketsDetail(encodeURIComponent(bucketId)),
+      "GET",
+      "/v1/buckets/{id}",
+    );
   }
 
   /** Update a bucket. */
   update(bucketId: string, params: UpdateBucketParams): Promise<Bucket> {
-    return this.http.put<Bucket>(`/v1/buckets/${encodeURIComponent(bucketId)}`, {
-      body: params,
-    });
+    return this.http.unwrap(
+      this.http.api.v1.bucketsUpdate(encodeURIComponent(bucketId), params as never),
+      "PUT",
+      "/v1/buckets/{id}",
+    );
   }
 
   /** Delete a bucket and everything in it. */
   delete(bucketId: string): Promise<void> {
-    return this.http.delete<void>(`/v1/buckets/${encodeURIComponent(bucketId)}`);
+    return this.http.unwrap(
+      this.http.api.v1.bucketsDelete(encodeURIComponent(bucketId)),
+      "DELETE",
+      "/v1/buckets/{id}",
+    ) as Promise<void>;
   }
 
   /**

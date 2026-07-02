@@ -4,13 +4,12 @@
  *
  * Run with:  RELAY_API_KEY=sk-... npx tsx examples/poll-webhooks.ts <bucket>
  */
-import { WebhookRelay } from "@webhookrelay/sdk";
+import { events } from "@webhookrelay/sdk";
 
 const bucket = process.argv[2] ?? "default";
-const relay = new WebhookRelay();
 
 async function main() {
-  const poller = relay.webhooks.poll({ bucket, intervalMs: 2000 });
+  const poller = events(bucket, { intervalMs: 2000 });
 
   // Stop cleanly on Ctrl-C.
   process.on("SIGINT", () => {
@@ -22,7 +21,7 @@ async function main() {
   for await (const webhook of poller) {
     console.log(`${webhook.method} ${webhook.id} (${webhook.body?.length ?? 0} bytes)`);
 
-    // If your handler failed, report a different outcome so the sender sees it:
+    // If your handler failed, report a different outcome with WebhookRelay:
     // await relay.webhooks.update(webhook.id, { status_code: 500 });
   }
   console.log("done.");

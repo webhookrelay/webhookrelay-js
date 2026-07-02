@@ -35,20 +35,30 @@ export class ServiceConnectionsResource {
 
   /** List all service connections. */
   list(): Promise<ServiceConnection[]> {
-    return this.http.get<ServiceConnection[]>("/v1/service-connections");
+    return this.http.unwrap(
+      this.http.api.v1.serviceConnectionsList(),
+      "GET",
+      "/v1/service-connections",
+    );
   }
 
   /** Create a service connection. */
   create(params: CreateServiceConnectionParams): Promise<ServiceConnection> {
-    return this.http.post<ServiceConnection>("/v1/service-connections", {
-      body: serviceConnectionParams(params),
-    });
+    return this.http.unwrap(
+      this.http.api.v1.serviceConnectionsCreate(
+        serviceConnectionParams(params) as never,
+      ),
+      "POST",
+      "/v1/service-connections",
+    );
   }
 
   /** Fetch a single service connection by ID. */
   get(id: string): Promise<ServiceConnection> {
-    return this.http.get<ServiceConnection>(
-      `/v1/service-connections/${encodeURIComponent(id)}`,
+    return this.http.unwrap(
+      this.http.api.v1.serviceConnectionsDetail(encodeURIComponent(id)),
+      "GET",
+      "/v1/service-connections/{id}",
     );
   }
 
@@ -57,16 +67,22 @@ export class ServiceConnectionsResource {
     id: string,
     params: UpdateServiceConnectionParams,
   ): Promise<ServiceConnection> {
-    return this.http.put<ServiceConnection>(
-      `/v1/service-connections/${encodeURIComponent(id)}`,
-      { body: serviceConnectionParams(params) },
+    return this.http.unwrap(
+      this.http.api.v1.serviceConnectionsUpdate(
+        encodeURIComponent(id),
+        serviceConnectionParams(params) as never,
+      ),
+      "PUT",
+      "/v1/service-connections/{id}",
     );
   }
 
   /** Delete a service connection. */
   delete(id: string): Promise<void> {
-    return this.http.delete<void>(
-      `/v1/service-connections/${encodeURIComponent(id)}`,
+    return this.http.unwrap(
+      this.http.api.v1.serviceConnectionsDelete(encodeURIComponent(id)),
+      "DELETE",
+      "/v1/service-connections/{id}",
     );
   }
 
@@ -74,8 +90,12 @@ export class ServiceConnectionsResource {
 
   /** List a bucket's service-connection inputs. */
   listInputs(bucketId: string): Promise<ServiceConnectionInput[]> {
-    return this.http.get<ServiceConnectionInput[]>(
-      `/v1/buckets/${encodeURIComponent(bucketId)}/service-connection-inputs`,
+    return this.http.unwrap(
+      this.http.api.v1.bucketsServiceConnectionInputsList(
+        encodeURIComponent(bucketId),
+      ),
+      "GET",
+      "/v1/buckets/{id}/service-connection-inputs",
     );
   }
 
@@ -84,9 +104,13 @@ export class ServiceConnectionsResource {
     bucketId: string,
     params: Partial<ServiceConnectionInput> & { service_connection_id: string },
   ): Promise<ServiceConnectionInput> {
-    return this.http.post<ServiceConnectionInput>(
-      `/v1/buckets/${encodeURIComponent(bucketId)}/service-connection-inputs`,
-      { body: managedServiceParams(params) },
+    return this.http.unwrap(
+      this.http.api.v1.bucketsServiceConnectionInputsCreate(
+        encodeURIComponent(bucketId),
+        managedServiceParams(params) as never,
+      ),
+      "POST",
+      "/v1/buckets/{id}/service-connection-inputs",
     );
   }
 
@@ -96,16 +120,26 @@ export class ServiceConnectionsResource {
     inputId: string,
     params: Partial<ServiceConnectionInput>,
   ): Promise<ServiceConnectionInput> {
-    return this.http.put<ServiceConnectionInput>(
-      `/v1/buckets/${encodeURIComponent(bucketId)}/service-connection-inputs/${encodeURIComponent(inputId)}`,
-      { body: managedServiceParams(params) },
+    return this.http.unwrap(
+      this.http.api.v1.bucketsServiceConnectionInputsUpdate(
+        encodeURIComponent(bucketId),
+        encodeURIComponent(inputId),
+        managedServiceParams(params) as never,
+      ),
+      "PUT",
+      "/v1/buckets/{id}/service-connection-inputs/{inputId}",
     );
   }
 
   /** Delete a service-connection input. */
   deleteInput(bucketId: string, inputId: string): Promise<void> {
-    return this.http.delete<void>(
-      `/v1/buckets/${encodeURIComponent(bucketId)}/service-connection-inputs/${encodeURIComponent(inputId)}`,
+    return this.http.unwrap(
+      this.http.api.v1.bucketsServiceConnectionInputsDelete(
+        encodeURIComponent(bucketId),
+        encodeURIComponent(inputId),
+      ),
+      "DELETE",
+      "/v1/buckets/{id}/service-connection-inputs/{inputId}",
     );
   }
 
@@ -113,8 +147,12 @@ export class ServiceConnectionsResource {
 
   /** List a bucket's service-connection outputs. */
   listOutputs(bucketId: string): Promise<ServiceConnectionOutput[]> {
-    return this.http.get<ServiceConnectionOutput[]>(
-      `/v1/buckets/${encodeURIComponent(bucketId)}/service-connection-outputs`,
+    return this.http.unwrap(
+      this.http.api.v1.bucketsServiceConnectionOutputsList(
+        encodeURIComponent(bucketId),
+      ),
+      "GET",
+      "/v1/buckets/{id}/service-connection-outputs",
     );
   }
 
@@ -125,9 +163,13 @@ export class ServiceConnectionsResource {
       service_connection_id: string;
     },
   ): Promise<ServiceConnectionOutput> {
-    return this.http.post<ServiceConnectionOutput>(
-      `/v1/buckets/${encodeURIComponent(bucketId)}/service-connection-outputs`,
-      { body: managedServiceParams(params) },
+    return this.http.unwrap(
+      this.http.api.v1.bucketsServiceConnectionOutputsCreate(
+        encodeURIComponent(bucketId),
+        managedServiceParams(params) as never,
+      ),
+      "POST",
+      "/v1/buckets/{id}/service-connection-outputs",
     );
   }
 
@@ -137,16 +179,26 @@ export class ServiceConnectionsResource {
     outputId: string,
     params: Partial<ServiceConnectionOutput>,
   ): Promise<ServiceConnectionOutput> {
-    return this.http.put<ServiceConnectionOutput>(
-      `/v1/buckets/${encodeURIComponent(bucketId)}/service-connection-outputs/${encodeURIComponent(outputId)}`,
-      { body: managedServiceParams(params) },
+    return this.http.unwrap(
+      this.http.api.v1.bucketsServiceConnectionOutputsUpdate(
+        encodeURIComponent(bucketId),
+        encodeURIComponent(outputId),
+        managedServiceParams(params) as never,
+      ),
+      "PUT",
+      "/v1/buckets/{id}/service-connection-outputs/{outputId}",
     );
   }
 
   /** Delete a service-connection output. */
   deleteOutput(bucketId: string, outputId: string): Promise<void> {
-    return this.http.delete<void>(
-      `/v1/buckets/${encodeURIComponent(bucketId)}/service-connection-outputs/${encodeURIComponent(outputId)}`,
+    return this.http.unwrap(
+      this.http.api.v1.bucketsServiceConnectionOutputsDelete(
+        encodeURIComponent(bucketId),
+        encodeURIComponent(outputId),
+      ),
+      "DELETE",
+      "/v1/buckets/{id}/service-connection-outputs/{outputId}",
     );
   }
 }

@@ -7,13 +7,11 @@
  *
  * Run with:  RELAY_API_KEY=sk-... npx tsx examples/subscribe-websocket.ts <bucket>
  */
-import { WebhookRelay } from "@webhookrelay/sdk";
+import { subscribe } from "@webhookrelay/sdk";
 
 const bucket = process.argv[2] ?? "default";
-const relay = new WebhookRelay();
 
-const sub = relay.webhooks.subscribe({
-  buckets: [bucket],
+const sub = subscribe(bucket, {
   onSubscribed: () => console.log(`subscribed to "${bucket}" — waiting for webhooks…`),
   onWebhook: (w) => {
     console.log(`${w.method} ${w.meta.bucket_name}${w.query ? "?" + w.query : ""}`);

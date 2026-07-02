@@ -5,6 +5,15 @@
  */
 
 export { WebhookRelay } from "./client.js";
+export {
+  configure,
+  events,
+  subscribe,
+  type ConfigureOptions,
+  type ConfigureResult,
+  type EventsOptions,
+  type SubscribeBucketOptions,
+} from "./convenience.js";
 
 // Config
 export {

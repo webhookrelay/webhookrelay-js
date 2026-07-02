@@ -27,8 +27,8 @@ export class WebhooksResource {
 
   /** List stored webhook logs for a bucket (paginated). */
   list(params: ListWebhookLogsParams): Promise<WebhookLogsPage> {
-    return this.http.get<WebhookLogsPage>("/v1/logs", {
-      query: {
+    return this.http.unwrap(
+      this.http.api.v1.logsList({
         bucket: params.bucket,
         limit: params.limit,
         offset: params.offset,
@@ -36,13 +36,19 @@ export class WebhooksResource {
         to: params.to,
         status: params.status,
         cursor: params.cursor,
-      },
-    });
+      }),
+      "GET",
+      "/v1/logs",
+    );
   }
 
   /** Fetch a single webhook log by ID. */
   get(logId: string): Promise<WebhookLog> {
-    return this.http.get<WebhookLog>(`/v1/logs/${encodeURIComponent(logId)}`);
+    return this.http.unwrap(
+      this.http.api.v1.logsDetail(encodeURIComponent(logId)),
+      "GET",
+      "/v1/logs/{id}",
+    );
   }
 
   /**
@@ -50,9 +56,11 @@ export class WebhooksResource {
    * consumed via {@link poll} (e.g. a different response status code/body).
    */
   update(logId: string, log: Partial<WebhookLog>): Promise<WebhookLog> {
-    return this.http.put<WebhookLog>(`/v1/logs/${encodeURIComponent(logId)}`, {
-      body: log,
-    });
+    return this.http.request<WebhookLog>(
+      "PUT",
+      `/v1/logs/${encodeURIComponent(logId)}`,
+      { body: log },
+    );
   }
 
   /**
