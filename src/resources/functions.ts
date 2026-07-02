@@ -61,15 +61,26 @@ export class FunctionsResource {
   }
 
   /** Update a function's name or source. */
-  update(
+  async update(
     functionId: string,
     params: UpdateFunctionParams,
   ): Promise<WebhookFunction> {
-    return this.http.unwrap(
-      this.http.api.v1.functionsUpdate(encodeURIComponent(functionId), params),
+    let body = params;
+    if (params.name === undefined || params.driver === undefined) {
+      const current = await this.get(functionId);
+      body = {
+        name: current.name,
+        driver: current.driver,
+        ...params,
+      };
+    }
+
+    await this.http.unwrap(
+      this.http.api.v1.functionsUpdate(encodeURIComponent(functionId), body),
       "PUT",
       "/v1/functions/{id}",
     );
+    return this.get(functionId);
   }
 
   /** Delete a function. */

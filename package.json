@@ -30,6 +30,7 @@
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "openapi": "swagger-typescript-api generate -p ./swagger/swagger.yaml -o ./src/generated -n api.ts && node scripts/postprocess-generated.mjs",

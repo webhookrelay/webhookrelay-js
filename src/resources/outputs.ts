@@ -71,26 +71,18 @@ export class OutputsResource {
    * delivered to this output — the core primitive for conditional forwarding.
    */
   setRules(bucketId: string, outputId: string, rules: Rules): Promise<Output> {
-    return this.http.unwrap(
-      this.http.api.v1.bucketsOutputsRulesUpdate(
-        encodeURIComponent(bucketId),
-        encodeURIComponent(outputId),
-        rules,
-      ),
+    return this.http.request<Output>(
       "PUT",
-      "/v1/buckets/{id}/outputs/{outputId}/rules",
+      `/v1/buckets/${encodeURIComponent(bucketId)}/outputs/${encodeURIComponent(outputId)}/rules`,
+      { body: rules },
     );
   }
 
   /** Remove all forward rules from an output (every request is forwarded). */
   deleteRules(bucketId: string, outputId: string): Promise<void> {
-    return this.http.unwrap(
-      this.http.api.v1.bucketsOutputsRulesDelete(
-        encodeURIComponent(bucketId),
-        encodeURIComponent(outputId),
-      ),
+    return this.http.request<void>(
       "DELETE",
-      "/v1/buckets/{id}/outputs/{outputId}/rules",
+      `/v1/buckets/${encodeURIComponent(bucketId)}/outputs/${encodeURIComponent(outputId)}/rules`,
     );
   }
 

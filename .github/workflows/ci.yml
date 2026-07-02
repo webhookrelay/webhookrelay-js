@@ -24,3 +24,22 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+  integration:
+    runs-on: ubuntu-latest
+    needs: build
+    env:
+      RELAY_API_KEY: ${{ secrets.RELAY_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run live API integration tests
+        if: env.RELAY_API_KEY != ''
+        run: npm run test:integration
+      - name: Skip live API integration tests
+        if: env.RELAY_API_KEY == ''
+        run: echo "RELAY_API_KEY is not available; skipping live API integration tests."

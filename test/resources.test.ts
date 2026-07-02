@@ -188,7 +188,9 @@ describe("remaining resource methods", () => {
     expect(calls.map((c) => `${c.method} ${c.url.replace(base, "")}`)).toEqual([
       "GET /v1/functions",
       "GET /v1/functions/fn1",
+      "GET /v1/functions/fn1",
       "PUT /v1/functions/fn1",
+      "GET /v1/functions/fn1",
       "GET /v1/functions/fn1/config",
       "GET /v1/functions/fn1/logs",
       "DELETE /v1/functions/fn1",
