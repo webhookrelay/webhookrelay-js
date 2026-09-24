@@ -19,13 +19,7 @@ swagger:
 # SDK in src/ is the ergonomic surface; the generated client is the raw
 # escape hatch, re-exported from "@webhookrelay/sdk/generated".
 openapi: swagger
-	npx swagger-typescript-api generate \
-		-p ./swagger/swagger.yaml \
-		-o ./src/generated \
-		-n api.ts \
-		--extract-request-params \
-		--extract-response-body
-	node scripts/postprocess-generated.mjs
+	npm run openapi
 	@echo "regenerated src/generated/api.ts"
 
 build:

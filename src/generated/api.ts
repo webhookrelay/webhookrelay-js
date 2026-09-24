@@ -36,6 +36,12 @@ export enum StructsTunnelMode {
   TunnelModeActive = 1,
 }
 
+export enum StructsSuspiciousEventStatus {
+  SuspiciousEventStatusOpen = "open",
+  SuspiciousEventStatusConfirmed = "confirmed",
+  SuspiciousEventStatusDismissed = "dismissed",
+}
+
 export enum StructsSubscriptionTerm {
   SubscriptionTermMonthly = "monthly",
   SubscriptionTermYearly = "yearly",
@@ -45,6 +51,12 @@ export enum StructsServiceType {
   ServiceGCP = "gcp",
   ServiceAWS = "aws",
   ServiceAzure = "azure",
+  ServiceSecret = "secret",
+  ServiceOpenAI = "openai",
+  ServiceGemini = "gemini",
+  ServiceAnthropic = "anthropic",
+  ServiceCustomLLM = "custom_llm",
+  ServiceWebhookRelayAI = "webhookrelay_ai",
 }
 
 export enum StructsServiceConnectionStatus {
@@ -69,6 +81,7 @@ export enum StructsServiceConnectionInputType {
   ServiceConnectionInputTypeAWSS3 = "aws_s3",
   ServiceConnectionInputTypeAWSSQS = "aws_sqs",
   ServiceConnectionInputTypeAWSSNS = "aws_sns",
+  ServiceConnectionInputTypeEmail = "email",
 }
 
 export enum StructsServiceConnectionInputStatus {
@@ -76,13 +89,24 @@ export enum StructsServiceConnectionInputStatus {
   ServiceConnectionInputStatusError = "error",
 }
 
-export enum StructsRequestStatus {
-  RequestStatusPreparing = 0,
-  RequestStatusSent = 1,
-  RequestStatusFailed = 2,
-  RequestStatusStalled = 3,
-  RequestStatusReceived = 4,
-  RequestStatusRejected = 5,
+export enum StructsRetryTaskType {
+  RetryTaskRecoverFailed = "recover_failed",
+  RetryTaskReplayMissing = "replay_missing",
+}
+
+export enum StructsRetryTaskStatus {
+  RetryTaskStatusPending = "pending",
+  RetryTaskStatusRunning = "running",
+  RetryTaskStatusCompleted = "completed",
+  RetryTaskStatusFailed = "failed",
+}
+
+export enum StructsOrgRole {
+  OrgRoleOwner = "owner",
+  OrgRoleAdmin = "admin",
+  OrgRoleBilling = "billing",
+  OrgRoleMember = "member",
+  OrgRoleViewer = "viewer",
 }
 
 export enum StructsObjectStorageFileFormat {
@@ -91,9 +115,24 @@ export enum StructsObjectStorageFileFormat {
   ObjectStorageFileFormatHAR = "har",
 }
 
+export enum StructsLogAttemptOutcome {
+  LogAttemptOutcomeUnspecified = "",
+  LogAttemptOutcomeSuccess = "success",
+  LogAttemptOutcomeRetryable = "retryable",
+  LogAttemptOutcomePermanent = "permanent",
+  LogAttemptOutcomeTimeout = "timeout",
+}
+
 export enum StructsIntegrationPlugin {
   IntegrationPluginWebhook = "webhook",
   IntegrationPluginSlack = "slack",
+  IntegrationPluginDiscord = "discord",
+  IntegrationPluginTelegram = "telegram",
+  IntegrationPluginEmail = "email",
+  IntegrationPluginTeams = "teams",
+  IntegrationPluginPushover = "pushover",
+  IntegrationPluginGeneric = "generic",
+  IntegrationPluginDefaultEmail = "default_email",
 }
 
 export enum StructsExecutionStatus {
@@ -106,6 +145,18 @@ export enum StructsAuthType {
   AuthTypeNone = 0,
   AuthTypeBasic = 1,
   AuthTypeToken = 2,
+}
+
+export enum StructsAlertType {
+  AlertTypeDeliveryFailures = "delivery_failures",
+  AlertTypeTLSExpiration = "tls_expiration",
+  AlertTypeHostDown = "host_down",
+  AlertTypeHealthEndpoint = "health_endpoint",
+}
+
+export enum StructsAlertPolicyMode {
+  AlertPolicyModeAnyFailure = "any_failure",
+  AlertPolicyModeErrorRate = "error_rate",
 }
 
 export enum StructsAccountAuthType {
@@ -121,12 +172,434 @@ export enum StructsAPIAccess {
   APIAccessEnabled = 2,
 }
 
+export interface AgentAdminConversation {
+  account_id?: string;
+  /**
+   * Approvals is how many destructive calls asked the user; Denied counts
+   * those declined, expired or cancelled (anything that did not run).
+   */
+  approvals?: number;
+  approvals_approved?: number;
+  approvals_denied?: number;
+  /**
+   * ApprovedScopes are the harness scopes the user widened this
+   * conversation by ("routing:drop"), space separated. Approvals outlive
+   * a turn: each turn is its own session, so the widening is replayed on
+   * top of the role's grant when the next turn starts.
+   */
+  approved_scopes?: string;
+  cache_hit_rate?: number;
+  cache_miss_cost_usd?: number;
+  cache_read_tokens?: number;
+  cache_write_tokens?: number;
+  context_id?: string;
+  /**
+   * ContextKind / ContextID name the page the conversation was opened
+   * from: "function" + a function ID for the function details page.
+   */
+  context_kind?: string;
+  created_at?: string;
+  /**
+   * CreatedBy is the acting member in an organization context, the
+   * account itself otherwise.
+   */
+  created_by?: string;
+  email?: string;
+  /** Grant is the harness grant label the conversation runs under. */
+  grant?: string;
+  grant_label?: string;
+  id?: string;
+  input_tokens?: number;
+  iterations?: number;
+  last_message_at?: string;
+  last_stop_cause?: string;
+  model_calls?: number;
+  model_failures?: number;
+  model_latency_ms?: number;
+  output_tokens?: number;
+  /**
+   * Page is a human label for where the chat was opened from ("Buckets",
+   * "Bucket orders", "Access Tokens"), so the agent knows what the user is
+   * looking at even when there is no resource to bind to.
+   */
+  page?: string;
+  provider?: string;
+  session_turns?: number;
+  thumbs_down?: number;
+  thumbs_up?: number;
+  title?: string;
+  tool_calls?: number;
+  turns?: number;
+  updated_at?: string;
+  username?: string;
+}
+
+export interface AgentAdminDetail {
+  approvals?: StructsAgentApproval[];
+  conversation?: AgentAdminConversation;
+  feedback?: StructsAgentFeedback[];
+  inferences?: SessionstoreInferenceRecord[];
+  messages?: AgentMessage[];
+  prompts?: SessionstorePromptRecord[];
+  tool_calls?: SessionstoreToolCallRecord[];
+  truncated?: AgentAdminEvidenceTruncated;
+}
+
+export interface AgentAdminEvidenceTruncated {
+  inferences?: boolean;
+  prompts?: boolean;
+  tool_calls?: boolean;
+}
+
+export interface AgentAdminPage {
+  items?: AgentAdminConversation[];
+  limit?: number;
+  offset?: number;
+  total?: number;
+}
+
+export interface AgentAdminStats {
+  accounts?: number;
+  approvals_approved?: number;
+  /** Approvals: destructive calls that paused for the user, by outcome. */
+  approvals_asked?: number;
+  approvals_denied?: number;
+  approvals_expired?: number;
+  approvals_pending?: number;
+  avg_model_latency_ms?: number;
+  cache_hit_rate?: number;
+  cache_miss_cost_usd?: number;
+  cache_read_tokens?: number;
+  conversations?: number;
+  daily?: AgentDailyStat[];
+  input_tokens?: number;
+  model_calls?: number;
+  model_failures?: number;
+  output_tokens?: number;
+  pages?: AgentNamedCount[];
+  stop_causes?: AgentNamedCount[];
+  thumbs_down?: number;
+  thumbs_up?: number;
+  tool_calls?: number;
+  tool_failures?: number;
+  tool_refusals?: number;
+  top_tools?: AgentToolStat[];
+  turns?: number;
+}
+
+export interface AgentAttachmentView {
+  bytes?: number;
+  media_type?: string;
+  name?: string;
+}
+
+export interface AgentDailyStat {
+  conversations?: number;
+  day?: string;
+  tool_calls?: number;
+  turns?: number;
+}
+
+export interface AgentMessage {
+  attachments?: AgentAttachmentView[];
+  role?: string;
+  text?: string;
+  tool_calls?: AgentToolCallView[];
+  tool_results?: AgentToolResultView[];
+}
+
+export interface AgentNamedCount {
+  count?: number;
+  name?: string;
+}
+
+export interface AgentPage {
+  focus_id?: string;
+  /**
+   * FocusKind/FocusID name the resource the page shows: the output, input
+   * or webhook log of the bucket the user has open, an incident, an alert
+   * policy, or an outbound consumer, endpoint or message.
+   */
+  focus_kind?: string;
+  id?: string;
+  kind?: string;
+  label?: string;
+}
+
+export interface AgentQuota {
+  limit?: number;
+  /** ResetsAt is when the next month's allowance starts. */
+  resets_at?: string;
+  /** Unlimited plans have no cap; Used still counts. */
+  unlimited?: boolean;
+  /** Used and Limit are model tokens (input + output) this calendar month. */
+  used?: number;
+}
+
+export interface AgentToolCallView {
+  id?: string;
+  input?: object;
+  name?: string;
+}
+
+export interface AgentToolInfo {
+  approvable?: boolean;
+  description?: string;
+  name?: string;
+  needs?: string;
+  permitted?: boolean;
+}
+
+export interface AgentToolResultView {
+  call_id?: string;
+  content?: string;
+  is_error?: boolean;
+}
+
+export interface AgentToolStat {
+  avg_ms?: number;
+  calls?: number;
+  failed?: number;
+  refused?: number;
+  tool?: string;
+}
+
+export interface ApiAdminAgentLimitValues {
+  max_iterations?: number;
+  max_output_tokens?: number;
+  max_tokens_per_turn?: number;
+  plan_tokens?: Record<string, number>;
+}
+
+export interface ApiAdminAgentLimits {
+  defaults?: ApiAdminAgentLimitValues;
+  effective?: ApiAdminAgentLimitValues;
+  overrides?: StructsAgentLimitOverrides;
+  updated_at?: string;
+  updated_by?: string;
+}
+
+export interface ApiAdminAgentLimitsUpdateRequest {
+  overrides?: StructsAgentLimitOverrides;
+}
+
+export interface ApiAdminTrafficStatsResponse {
+  collectedAt?: string;
+  snapshots?: TrafficstatsSnapshot[];
+}
+
+export interface ApiAdminUsageAlertsResponse {
+  alerts?: StructsAdminUsageAlert[];
+  limit?: number;
+  offset?: number;
+  total?: number;
+}
+
+export interface ApiAdminUsageBucket {
+  account_id?: string;
+  created_at?: number;
+  description?: string;
+  id?: string;
+  inputs?: ApiAdminUsageInput[];
+  name?: string;
+  outputs?: ApiAdminUsageOutput[];
+  suspended?: boolean;
+}
+
+export interface ApiAdminUsageBucketsResponse {
+  buckets?: ApiAdminUsageBucket[];
+  limit?: number;
+  offset?: number;
+  total?: number;
+}
+
+export interface ApiAdminUsageInput {
+  description?: string;
+  function_id?: string;
+  id?: string;
+  name?: string;
+}
+
+export interface ApiAdminUsageOutput {
+  account_id?: string;
+  bucket_id?: string;
+  /**
+   * BucketName/AccountID are resolved in the flat outputs listing; the
+   * buckets listing leaves them empty (the parent row carries them).
+   */
+  bucket_name?: string;
+  created_at?: number;
+  destination?: string;
+  /**
+   * DestinationProvider is the classified destination service (jenkins,
+   * slack, localhost, ...) or "unknown".
+   */
+  destination_provider?: string;
+  disabled?: boolean;
+  function_id?: string;
+  id?: string;
+  internal?: boolean;
+  name?: string;
+  response_function_id?: string;
+}
+
+export interface ApiAdminUsageOutputsResponse {
+  limit?: number;
+  offset?: number;
+  outputs?: ApiAdminUsageOutput[];
+  total?: number;
+}
+
+export interface ApiAdminUsageSummaryResponse {
+  collectedAt?: string;
+  /** DestinationProviders is classified-destination -> output count. */
+  destination_providers?: Record<string, number>;
+  disabled_outputs?: number;
+  internal_outputs?: number;
+  /**
+   * OutputsWithFunctions counts outputs with a delivery or response
+   * function attached.
+   */
+  outputs_with_functions?: number;
+  total_outputs?: number;
+}
+
+export interface ApiAdminUsageWebhookMonth {
+  /** @example "2026-08" */
+  month?: string;
+  /** @example 125000 */
+  webhooks?: number;
+}
+
+export interface ApiAdminUsageWebhooksResponse {
+  account_id?: string;
+  /** @example "2025-09-01" */
+  from?: string;
+  months?: ApiAdminUsageWebhookMonth[];
+  /** @example "2026-08-30" */
+  to?: string;
+  total_webhooks?: number;
+}
+
+export interface ApiAgentApprovalRequest {
+  /** CallID is the paused tool call, from the approval_requested event. */
+  call_id?: string;
+  /** Remember also allows the scope for the rest of the conversation (approve). */
+  remember?: boolean;
+  /** Scope is the access the call needs, e.g. "routing:drop" (approve). */
+  scope?: string;
+  /** Text is the reason the agent should hear (deny, optional). */
+  text?: string;
+}
+
+export interface ApiAgentControlRequest {
+  /** Scope is the harness scope to approve, e.g. "routing:drop" (widen). */
+  scope?: string;
+  /** Text is the steering instruction (steer). */
+  text?: string;
+}
+
+export interface ApiAgentConversationDetail {
+  active?: boolean;
+  /**
+   * Approvals are the destructive calls the agent asked about in this
+   * conversation and what the user answered, so a reopened chat still
+   * shows who allowed what.
+   */
+  approvals?: StructsAgentApproval[];
+  conversation?: StructsAgentConversation;
+  feedback?: StructsAgentFeedback[];
+  messages?: AgentMessage[];
+}
+
+export interface ApiAgentConversationRequest {
+  context_id?: string;
+  context_kind?: string;
+  /** Page labels where the chat was opened ("Buckets", "Access Tokens"). */
+  page?: string;
+  title?: string;
+}
+
+export interface ApiAgentFeedbackRequest {
+  comment?: string;
+  excerpt?: string;
+  message_index?: number;
+  /** up | down */
+  rating?: string;
+}
+
+export interface ApiAgentMessageRequest {
+  id?: string;
+  /**
+   * Page is where the user is when sending (kind, id, label), so a chat
+   * that follows them across the dashboard still knows what they see.
+   */
+  page?: AgentPage;
+  text?: string;
+}
+
+export interface ApiAgentQuotaExceeded {
+  code?: string;
+  error?: string;
+  quota?: AgentQuota;
+}
+
+export interface ApiAgentStatus {
+  enabled?: boolean;
+  grant?: string;
+  model?: string;
+  playbooks?: string[];
+  /** Quota is the plan's shared account-agent and managed-Function AI token allowance. */
+  quota?: AgentQuota;
+  scopes?: string[];
+}
+
+export interface ApiAgentToolsResponse {
+  tools?: AgentToolInfo[];
+}
+
+export interface ApiEnterprisePlanMetadataField {
+  aliases?: string[];
+  description?: string;
+  group?: string;
+  key?: string;
+  label?: string;
+  minimum?: number;
+  type?: "integer" | "number" | "boolean";
+  unit?: string;
+}
+
+export interface ApiEnterprisePlanMetadataSchemaResponse {
+  fields?: ApiEnterprisePlanMetadataField[];
+}
+
 export interface ApiResponse {
   id?: string;
   status?: string;
 }
 
 export interface ApiServerConfig {
+  /**
+   * EmailInboundAddressTemplate is the canonical inbound-email address format,
+   * e.g. "{token}@in.webhookrelay-mail.com". The backend is the single source
+   * of truth for the address shape so the UI and API render addresses
+   * consistently instead of hardcoding the "{token}@<domain>" join — substitute
+   * an email input's id for "{token}". Empty when inbound email is not
+   * configured.
+   */
+  email_inbound_address_template?: string;
+  /**
+   * EmailInboundDomain is the inbound-email domain ({local-part}@<domain>)
+   * addresses are built on for this environment ("in.webhookrelay-mail.com" in
+   * production, "dev.webhookrelay-mail.com" in development). Empty when inbound
+   * email is not configured, which the UI uses to hide the email-input feature.
+   */
+  email_inbound_domain?: string;
+  /**
+   * EmailInboundEnabled reports whether the inbound email endpoint is wired up
+   * (a shared secret is provisioned).
+   */
+  email_inbound_enabled?: boolean;
   turnstile_disabled?: boolean;
   version?: string;
 }
@@ -134,6 +607,11 @@ export interface ApiServerConfig {
 export interface ApiAccessTokenCreateResponse {
   key?: string;
   secret?: string;
+}
+
+export interface ApiAccountAuditResponse {
+  data?: StructsAuditLog[];
+  total?: number;
 }
 
 export interface ApiActionLogRequest {
@@ -144,9 +622,139 @@ export interface ApiActionLogRequest {
   process_policy?: string;
 }
 
+export interface ApiAdminAccountIdentityUpdateRequest {
+  auth_type?: StructsAccountAuthType;
+  email?: string;
+}
+
+export interface ApiAdminAccountSearchResult {
+  active?: boolean;
+  auth_type?: StructsAccountAuthType;
+  company_name?: string;
+  created_at?: number;
+  email?: string;
+  email_verified?: boolean;
+  first_name?: string;
+  id?: string;
+  last_login_at?: number;
+  last_name?: string;
+  organization?: boolean;
+  plan_id?: string;
+  subscription_meta?: StructsMetadata;
+  username?: string;
+}
+
+export interface ApiAdminAccountStatus {
+  account_id?: string;
+  bucket_count?: number;
+  current_period_end?: number;
+  current_period_start?: number;
+  effective_metadata?: StructsPlanMeta;
+  plan_id?: string;
+  plan_metadata?: StructsMetadata;
+  subscription_created?: number;
+  subscription_extras?: StructsSubscriptionExtras[];
+  subscription_metadata?: StructsMetadata;
+  subscription_status?: string;
+  suspend_protection?: boolean;
+  suspended_bucket_count?: number;
+}
+
+export interface ApiAdminBucketSuspensionResponse {
+  affected?: number;
+  suspended?: boolean;
+  total?: number;
+}
+
+export interface ApiAdminBucketSuspensionUpdateRequest {
+  suspended?: boolean;
+}
+
+export interface ApiAdminOrganizationDetails {
+  members?: StructsOrganizationMemberDetails[];
+  organization?: ApiAdminOrganizationSummary;
+  sub_accounts?: StructsSubAccount[];
+}
+
+export interface ApiAdminOrganizationMemberCreateRequest {
+  account_id?: string;
+  email?: string;
+  role?: string;
+  username?: string;
+}
+
+export interface ApiAdminOrganizationMemberUpdateRequest {
+  role?: string;
+}
+
+export interface ApiAdminOrganizationSummary {
+  active?: boolean;
+  created_at?: number;
+  email?: string;
+  id?: string;
+  member_count?: number;
+  organization_description?: string;
+  organization_name?: string;
+  plan_id?: string;
+  sub_account_count?: number;
+  username?: string;
+}
+
+export interface ApiAdminOrganizationUpdateRequest {
+  organization_description?: string;
+  organization_name?: string;
+}
+
+export interface ApiAdminRecentAccount {
+  active?: boolean;
+  auth_type?: StructsAccountAuthType;
+  company_name?: string;
+  created_at?: string;
+  email?: string;
+  email_verified?: boolean;
+  first_name?: string;
+  id?: string;
+  last_name?: string;
+  organization?: boolean;
+  plan_id?: string;
+  use_case?: string;
+  username?: string;
+}
+
+export interface ApiAdminRecentAccountsResponse {
+  accounts?: ApiAdminRecentAccount[];
+  created_after?: string;
+  limit?: number;
+  offset?: number;
+  total?: number;
+}
+
+export interface ApiAdminSubAccountCreateRequest {
+  auth_type?: StructsAccountAuthType;
+  email?: string;
+  username?: string;
+}
+
+export interface ApiAdminSuspendProtectionUpdateRequest {
+  enabled?: boolean;
+}
+
+export interface ApiAuditLogsResponse {
+  data?: StructsAuditLog[];
+  limit?: number;
+  offset?: number;
+  total?: number;
+}
+
+export interface ApiBindFunctionConnectionRequest {
+  service_connection_id?: string;
+}
+
 export interface ApiCreateAccessTokenRequest {
   api_access?: string;
   description?: string;
+  name?: string;
+  permissions?: StructsTokenPermissions;
   scopes?: ApiTokenScopes;
 }
 
@@ -157,10 +765,41 @@ export interface ApiCreateManagedCertRequest {
   provider?: string;
 }
 
+export interface ApiCreatorIdentity {
+  avatar_url?: string;
+  id?: string;
+  kind?: string;
+  username?: string;
+}
+
+export interface ApiDeletedResponse {
+  deleted?: boolean;
+}
+
+export interface ApiEndpointWithSecret {
+  auto_disable?: boolean;
+  consecutive_failures?: number;
+  consumer?: string;
+  created_at?: string;
+  description?: string;
+  event_types?: string[];
+  failing_since?: string;
+  function_id?: string;
+  headers?: Record<string, string>;
+  id?: string;
+  previous_secret_expires_at?: string;
+  rate?: number;
+  secret?: string;
+  state?: "active" | "failing" | "paused" | "disabled";
+  /** seconds; zero uses OutboundDefaultTimeout */
+  timeout?: number;
+  updated_at?: string;
+  url?: string;
+}
+
 export interface ApiEventResponse {
   has_more?: boolean;
   logs?: StructsLog[];
-  next_cursor?: string;
 }
 
 export interface ApiListPlanOptionalItemsResponse {
@@ -247,10 +886,54 @@ export interface ApiMfaVerifyRequest {
   token?: string;
 }
 
+export interface ApiOrgInviteCreateRequest {
+  email?: string;
+  role?: string;
+}
+
+export interface ApiOrgMemberUpdateRequest {
+  role?: string;
+}
+
+export interface ApiOrgSamlSSORequest {
+  allow_jit?: boolean;
+  allowed_domains?: string[];
+  email_attribute_name?: string;
+  entity_id?: string;
+  force_authn?: boolean;
+  name?: string;
+  name_id_format?: string;
+  saml_metadata_url?: string;
+  signature_method?: string;
+}
+
+export interface ApiOutboundErrorResponse {
+  error?: string;
+}
+
+export interface ApiOutboundMessageDetail {
+  consumer?: string;
+  created_at?: string;
+  deliveries?: StructsLog[];
+  endpoint_ids?: string[];
+  enqueued_at?: string;
+  event_id?: string;
+  event_type?: string;
+  id?: string;
+  payload?: object;
+}
+
+export interface ApiOutboundRecoveryBody {
+  /** MessageID is the message to re-send; required by retry only. */
+  message_id?: string;
+  /** Since starts the recovery window; defaults to 24 hours ago. */
+  since?: string;
+}
+
 export interface ApiPlanChangeRequest {
   optional_items?: ApiPlanChangeRequestOptionalItem[];
   /** Price ID */
-  plan_id?: string;
+  plan_id: string;
 }
 
 export interface ApiPlanChangeRequestOptionalItem {
@@ -258,8 +941,13 @@ export interface ApiPlanChangeRequestOptionalItem {
   description?: string;
   /** For now contains "webhooks" count, later will add team seats */
   metadata?: Record<string, string>;
-  price_id?: string;
-  quantity?: number;
+  price_id: string;
+  /**
+   * Quantity must be between 1 and 20. The sum across optional_items must not exceed 20.
+   * @min 1
+   * @max 20
+   */
+  quantity: number;
 }
 
 export interface ApiPlanChangeResponse {
@@ -274,20 +962,185 @@ export interface ApiPlanOptionalItems {
   plan_id?: string;
 }
 
+export interface ApiRetryBulkRequest {
+  bucket?: string;
+  /** optional: narrow to a single output */
+  output?: string;
+  /** RFC3339; required (bounds the scan) */
+  since?: string;
+  /** RFC3339; optional, defaults to now */
+  until?: string;
+}
+
+export interface ApiSecretResponse {
+  secret?: string;
+}
+
 export interface ApiSetFunctionConfigRequest {
   key?: string;
   value?: string;
 }
 
+export interface ApiSuspiciousDetectionSettingsRequest {
+  config?: StructsSuspiciousDetectionConfig;
+  expected_version?: string;
+}
+
+export interface ApiSuspiciousDetectionSettingsResponse {
+  config?: StructsSuspiciousDetectionConfig;
+  updated_at?: string;
+  updated_by?: string;
+  version?: string;
+}
+
+export interface ApiSuspiciousEventListResponse {
+  data?: StructsSuspiciousEvent[];
+  limit?: number;
+  offset?: number;
+  total?: number;
+}
+
+export interface ApiSuspiciousEventReviewRequest {
+  log_id?: string;
+  note?: string;
+  status?: StructsSuspiciousEventStatus;
+}
+
+export interface ApiSuspiciousEventWebhookResponse {
+  body_truncated?: boolean;
+  webhook?: StructsLog;
+}
+
+export interface ApiSuspiciousHuntRequest {
+  account_id?: string;
+  bucket_id?: string;
+  cursor?: string;
+  from?: string;
+  limit?: number;
+  rule_version?: string;
+  to?: string;
+}
+
+export interface ApiSuspiciousHuntResponse {
+  findings?: number;
+  next_cursor?: string;
+  oversized_bodies?: number;
+  payload_errors?: number;
+  rule_version?: string;
+  scanned?: number;
+  truncated?: boolean;
+}
+
 export interface ApiTokenScopes {
+  /**
+   * Bucket names, IDs, or glob patterns. Empty means unrestricted; !none
+   * disables bucket subscriptions.
+   */
   buckets?: string[];
+  /**
+   * Tunnel names, IDs, groups, hosts, or glob patterns. Empty means
+   * unrestricted; !none disables tunnel subscriptions.
+   */
   tunnels?: string[];
 }
 
 export interface ApiUpdateAccessTokenRequest {
   api_access?: string;
   description?: string;
+  name?: string;
+  permissions?: StructsTokenPermissions;
   scopes?: ApiTokenScopes;
+}
+
+export interface ApiUpdateAccountRequest {
+  alert_notifications?: boolean;
+  organization?: boolean;
+  organization_description?: string;
+  organization_logo?: string;
+  organization_name?: string;
+  /**
+   * every field is a pointer with nil = keep, so partial updates
+   * (e.g. org-profile-only PUTs) never silently reset the rest
+   */
+  usage_alerts?: boolean;
+  usage_alerts_50?: boolean;
+  usage_alerts_75?: boolean;
+  usage_alerts_email?: string;
+  usage_alerts_emails?: string[];
+}
+
+export interface FunctiondocsHTTPFixture {
+  headers?: Record<string, string>;
+  method?: string;
+  response_body?: string;
+  url?: string;
+}
+
+export interface FunctiondocsMethod {
+  description?: string;
+  example?: HelpersExample;
+  name?: string;
+  notes?: string;
+  parameters?: HelpersParameter[];
+  returns?: string;
+  signature?: string;
+}
+
+export interface FunctiondocsRecipe {
+  code?: string;
+  config?: Record<string, string>;
+  delivery_error?: string;
+  expected_body?: string;
+  expected_headers?: Record<string, string>;
+  http_fixture?: FunctiondocsHTTPFixture;
+  module?: string;
+  name?: string;
+  raw_query?: string;
+  request_body?: string;
+  request_headers?: Record<string, string>;
+  response?: FunctiondocsRecipeResponse;
+  response_body?: string;
+  response_status?: number;
+  stop_forwarding?: boolean;
+}
+
+export interface FunctiondocsRecipeResponse {
+  body?: string;
+  headers?: Record<string, string>;
+  status?: number;
+}
+
+export interface FunctiondocsReference {
+  driver?: string;
+  markdown?: string;
+  methods?: FunctiondocsMethod[];
+  module?: string;
+  recipes?: FunctiondocsRecipe[];
+  version?: string;
+}
+
+export interface FunctiondocsRuntime {
+  driver?: string;
+  guide?: string;
+  limits?: string;
+  modules?: string[];
+  version?: string;
+}
+
+export interface HelpersExample {
+  code?: string;
+  expected_body?: string;
+  expected_headers?: Record<string, string>;
+  expected_method?: string;
+  expected_path?: string;
+  expected_raw_query?: string;
+}
+
+export interface HelpersParameter {
+  name?: string;
+  optional?: boolean;
+  type?: string;
+  variadic?: boolean;
 }
 
 export interface RulesArgument {
@@ -318,6 +1171,69 @@ export interface RulesRules {
   match?: RulesMatchRule;
   not?: RulesNotRule;
   or?: RulesRules[];
+}
+
+export interface SessionstoreInferenceRecord {
+  at?: string;
+  attempt?: number;
+  cacheMissCostUSD?: number;
+  cacheMissReason?: string;
+  cacheMissTokens?: number;
+  cacheRead?: number;
+  cacheWrite?: number;
+  expectedCacheTokens?: number;
+  failed?: boolean;
+  generationMs?: number;
+  id?: number;
+  idleSincePreviousMs?: number;
+  inputTokens?: number;
+  iteration?: number;
+  kind?: string;
+  latencyMs?: number;
+  outputTokens?: number;
+  outputTokensPerSecond?: number;
+  prefixChanged?: boolean;
+  prefixHash?: string;
+  provider?: string;
+  providerChanged?: boolean;
+  requestID?: string;
+  sessionID?: string;
+  stopReason?: string;
+  ttftms?: number;
+  turnID?: string;
+}
+
+export interface SessionstorePromptRecord {
+  acceptedAt?: string;
+  /**
+   * Attachments is the JSON of the prompt's llm.Attachment slice. A recovered
+   * prompt that never started is re-sent from this row, so dropping them here
+   * would replay the message without its images.
+   */
+  attachments?: number[];
+  promptID?: string;
+  sessionID?: string;
+  settledAt?: string;
+  startedAt?: string;
+  state?: string;
+  stopCause?: string;
+  text?: string;
+}
+
+export interface SessionstoreToolCallRecord {
+  at?: string;
+  callID?: string;
+  durationMs?: number;
+  failed?: boolean;
+  id?: number;
+  iteration?: number;
+  missing?: string;
+  refused?: boolean;
+  requestID?: string;
+  sessionID?: string;
+  summary?: string;
+  tool?: string;
+  turnID?: string;
 }
 
 export interface StructsAWSS3Input {
@@ -364,17 +1280,40 @@ export interface StructsAccessToken {
   active?: boolean;
   api_access?: StructsAPIAccess;
   created_at?: string;
+  /**
+   * CreatedBy attributes the token to whoever minted it (sub-account
+   * ID or org member account ID; empty = account owner). Used to
+   * revoke org-bound tokens when their creator leaves the org.
+   */
+  created_by?: string;
+  created_by_role?: string;
   deleted_at?: string;
   description?: string;
   id?: string;
   last_login?: string;
+  /**
+   * Name is the API compatibility alias for Description. Description remains
+   * the persisted column; MarshalJSON derives Name so clients that create a
+   * token with `name` see it round-trip on list responses.
+   */
+  name?: string;
+  /**
+   * Permissions optionally constrains REST and MCP access using the same
+   * role model as organization members. Nil preserves the historical
+   * unrestricted access-token behaviour for tokens created before this field
+   * existed.
+   */
+  permissions?: StructsTokenPermissions;
   scopes?: StructsMetadata;
   updated_at?: string;
 }
 
 export interface StructsAccount {
   access_tokens?: StructsAccessToken[];
+  /** normalized: paid/organic/social/email/referral/direct */
+  acquisition_channel?: string;
   active?: boolean;
+  alert_notifications?: boolean;
   /** authentication type (regular/github/google) */
   auth_type?: StructsAccountAuthType;
   avatar_url?: string;
@@ -389,12 +1328,35 @@ export interface StructsAccount {
   email?: string;
   email_verified?: boolean;
   failed_login_attempts?: number;
+  /** Meta click id */
+  fbclid?: string;
   first_name?: string;
+  /** first-touch utm_source when it differs from last touch */
+  first_touch_source?: string;
+  /** Google click id (offline conversion import) */
+  gclid?: string;
   id?: string;
+  landing_page?: string;
   last_failed_login?: string;
   last_login_at?: string;
   last_name?: string;
   mfa_enabled?: boolean;
+  /** Microsoft click id */
+  msclkid?: string;
+  /**
+   * Organization marks this account as an organization: other
+   * accounts can be invited into it as members (see
+   * OrganizationMember). Org ID == this account's ID. Conversion is
+   * one-way — the flag is never unset.
+   */
+  organization?: boolean;
+  organization_description?: string;
+  /**
+   * OrganizationLogo holds a small data:image/...;base64 logo (a few
+   * KB — the dashboard resizes before upload, the API caps the size).
+   */
+  organization_logo?: string;
+  organization_name?: string;
   /**
    * desired plan ID, used when registering new account
    * to create new subscription in Stripe after
@@ -402,6 +1364,7 @@ export interface StructsAccount {
    */
   plan_id?: string;
   plan_meta?: StructsMetadata;
+  referrer_url?: string;
   role?: string;
   sub_accounts?: StructsSubAccount[];
   /** Unix ts */
@@ -418,11 +1381,29 @@ export interface StructsAccount {
   tunnels?: StructsTunnel[];
   updated_at?: string;
   usage_alerts?: boolean;
+  usage_alerts_50?: boolean;
+  usage_alerts_75?: boolean;
   usage_alerts_email?: string;
+  /**
+   * UsageAlertsEmails are additional recipients for quota notifications.
+   * The account email remains the primary recipient; this list is additive.
+   */
+  usage_alerts_emails?: string[];
   /** Why have they registered? */
   use_case?: string;
   use_case_completed?: boolean;
   username?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  utm_medium?: string;
+  /**
+   * Acquisition attribution — where this signup came from. Captured at
+   * registration from the marketing site's wr_attribution cookie / utm_* query
+   * params (see plugins/attribution.client.ts on webhookrelay.com). Used to
+   * trace ad -> click -> signup -> paid plan. All best-effort, may be empty.
+   */
+  utm_source?: string;
+  utm_term?: string;
   webhookCounts?: StructsWebhooksCount[];
 }
 
@@ -443,6 +1424,192 @@ export interface StructsAdminConnectedAccount {
 export interface StructsAdminConnectedClientsResponse {
   accounts?: StructsAdminConnectedAccount[];
   total_count?: number;
+}
+
+export interface StructsAdminUsageAlert {
+  account_email?: string;
+  account_id?: string;
+  account_username?: string;
+  created_at?: string;
+  delivery_status?: string;
+  id?: string;
+  notice_type?: string;
+  plan_id?: string;
+  quota?: number;
+  recipients_sent?: number;
+  recipients_total?: number;
+  subscription_period_end?: number;
+  subscription_period_start?: number;
+  suspended?: boolean;
+  threshold?: number;
+  used?: number;
+}
+
+export interface StructsAgentApproval {
+  account_id?: string;
+  asked_at?: string;
+  /** CallID is the provider's tool-call id, matching the tool_call event. */
+  call_id?: string;
+  conversation_id?: string;
+  decided_at?: string;
+  decided_by?: string;
+  decision?: string;
+  id?: string;
+  /**
+   * Input is the tool's arguments as the model sent them (clipped), so a
+   * reviewer can see exactly what would have been deleted.
+   */
+  input?: string;
+  /** Reason is the user's words on a denial, or the system's on expiry. */
+  reason?: string;
+  /**
+   * Remember is true when the approval was also recorded on the
+   * conversation, so later calls needing the same scope do not ask again.
+   */
+  remember?: boolean;
+  /** Scope is the access that was missing, e.g. "routing:drop". */
+  scope?: string;
+  tool?: string;
+}
+
+export interface StructsAgentConversation {
+  account_id?: string;
+  /**
+   * ApprovedScopes are the harness scopes the user widened this
+   * conversation by ("routing:drop"), space separated. Approvals outlive
+   * a turn: each turn is its own session, so the widening is replayed on
+   * top of the role's grant when the next turn starts.
+   */
+  approved_scopes?: string;
+  context_id?: string;
+  /**
+   * ContextKind / ContextID name the page the conversation was opened
+   * from: "function" + a function ID for the function details page.
+   */
+  context_kind?: string;
+  created_at?: string;
+  /**
+   * CreatedBy is the acting member in an organization context, the
+   * account itself otherwise.
+   */
+  created_by?: string;
+  /** Grant is the harness grant label the conversation runs under. */
+  grant?: string;
+  id?: string;
+  last_message_at?: string;
+  /**
+   * Page is a human label for where the chat was opened from ("Buckets",
+   * "Bucket orders", "Access Tokens"), so the agent knows what the user is
+   * looking at even when there is no resource to bind to.
+   */
+  page?: string;
+  title?: string;
+  turns?: number;
+  updated_at?: string;
+}
+
+export interface StructsAgentFeedback {
+  account_id?: string;
+  comment?: string;
+  conversation_id?: string;
+  created_at?: string;
+  created_by?: string;
+  /**
+   * Excerpt is the start of the rated message, so a reviewer sees what was
+   * rated without loading the transcript.
+   */
+  excerpt?: string;
+  id?: string;
+  /**
+   * MessageIndex is the position of the assistant message in the stored
+   * transcript (ProjectHistory order); one rating per message.
+   */
+  message_index?: number;
+  /** up | down */
+  rating?: string;
+  updated_at?: string;
+}
+
+export interface StructsAgentLimitOverrides {
+  /** MaxIterations overrides model round trips per turn (AGENT_MAX_ITERATIONS). */
+  max_iterations?: number;
+  /** MaxOutputTokens overrides the single-response output cap. */
+  max_output_tokens?: number;
+  /**
+   * MaxTokensPerTurn overrides the per-turn effective-token budget
+   * (AGENT_MAX_TOKENS). Cache reads count at one tenth.
+   */
+  max_tokens_per_turn?: number;
+  /**
+   * PlanTokens overrides the monthly effective-token allowance per plan
+   * family (free, basic, business, pro); -1 removes the cap. The override
+   * replaces the family default only: an account whose plan metadata sets
+   * agent_tokens explicitly keeps its explicit value.
+   */
+  plan_tokens?: Record<string, number>;
+}
+
+export interface StructsAlertPolicy {
+  check_interval_seconds?: number;
+  description?: string;
+  health_endpoint?: StructsHealthEndpointConfig;
+  minimum_events?: number;
+  mode?: StructsAlertPolicyMode;
+  recovery_threshold_percent?: number;
+  threshold_percent?: number;
+  tls_expiration_days?: number;
+  type?: StructsAlertType;
+  window_seconds?: number;
+}
+
+export interface StructsAuditLog {
+  /**
+   * composite indexes cover the account activity view's query
+   * patterns: paginated scan by (account_id, created_at) plus
+   * user/action filters; (account_id, action, resource_id) predates
+   * this and doubles as the action filter index.
+   */
+  account_id?: string;
+  /** create/delete/update */
+  action?: string;
+  /**
+   * Actor fields identify the real logged-in account when the action
+   * was performed in an organization context (AccountID is then the
+   * org account). Empty for regular requests.
+   */
+  actor_account_id?: string;
+  actor_email?: string;
+  /**
+   * AgentConversationID is the chat the agent acted in when Source is
+   * "agent", so the activity view can open the conversation.
+   */
+  agent_conversation_id?: string;
+  created_at?: string;
+  /**
+   * Diff is a JSON array of {field, old, new} changes captured on
+   * update actions (sensitive values redacted). Empty for creates,
+   * deletes and entries recorded before diffs existed — the UI shows
+   * those as "unavailable".
+   */
+  diff?: string;
+  email?: string;
+  id?: string;
+  /** Caller's IP address */
+  ip_address?: string;
+  message?: string;
+  resource_id?: string;
+  /** for inputs it's input ID, for tunnels it's host */
+  resource_identifier?: string;
+  /** bucket/tunnel/input/output/account */
+  resource_kind?: string;
+  /**
+   * Source names the surface the action came through: "mcp" for an MCP
+   * client, "agent" for the agent chat. Empty for the REST API and the
+   * dashboard, which are one surface at this layer.
+   */
+  source?: string;
+  updated_at?: string;
+  username?: string;
 }
 
 export interface StructsAzureServiceConnection {
@@ -472,6 +1639,12 @@ export interface StructsBucket {
   account_id?: string;
   auth?: StructsBucketAuth;
   created_at?: number;
+  /**
+   * CreatedBy is the account ID of the user who created the bucket —
+   * for organization accounts this is the acting member. Empty means
+   * the account owner.
+   */
+  created_by?: string;
   cron_id?: string;
   description?: string;
   /** If true, doesn't save request body, query or headers */
@@ -508,6 +1681,11 @@ export interface StructsBucketAuth {
   type?: StructsAuthType;
   updated_at?: number;
   username?: string;
+}
+
+export interface StructsBucketLogsStats {
+  bucket_id?: string;
+  stats?: StructsLogsStats[];
 }
 
 export interface StructsCombinedUsage {
@@ -589,6 +1767,12 @@ export interface StructsCron {
   account_id?: string;
   bucket?: StructsBucket;
   created_at?: string;
+  /**
+   * CreatedBy is the account ID of the user who created the cron —
+   * for organization accounts this is the acting member. Empty means
+   * the account owner.
+   */
+  created_by?: string;
   /** URL to send the webhook to */
   destination?: string;
   enabled?: boolean;
@@ -612,6 +1796,27 @@ export interface StructsCron {
   starts_at?: string;
   timezone?: string;
   updated_at?: string;
+}
+
+export interface StructsDBSSODetails {
+  /**
+   * AllowJIT is a pointer so old rows with no key retain the historical
+   * behavior (JIT enabled). New self-service connections write it explicitly.
+   */
+  allow_jit?: boolean;
+  allowed_domains?: string[];
+  /** ForceAuthn asks the IdP to reauthenticate instead of reusing its session. */
+  force_authn?: boolean;
+  /**
+   * NameIDFormat controls the NameIDPolicy sent in AuthnRequest. Empty keeps
+   * crewjam's default transient format for backward compatibility.
+   */
+  name_id_format?: string;
+  /**
+   * SignatureMethod selects the algorithm used to sign AuthnRequests. Empty
+   * retains RSA-SHA1 for old rows; new connections explicitly use SHA-256.
+   */
+  signature_method?: string;
 }
 
 export type StructsDeleteFunctionResponse = object;
@@ -661,8 +1866,32 @@ export interface StructsDurabilityConfig {
   schedule?: string;
 }
 
+export interface StructsEmailInput {
+  /**
+   * AllowedSenders, when non-empty, restricts inbound mail to these From
+   * addresses (exact match, lower-cased). Abuse / hardening control.
+   */
+  allowed_senders?: string[];
+  /** DropAttachments skips attachment parsing and storage entirely. */
+  drop_attachments?: boolean;
+  /**
+   * Enabled gates whether inbound mail is accepted. When false the address
+   * still resolves but mail is dropped at ingest.
+   */
+  enabled?: boolean;
+  /**
+   * MaxAttachmentBytes overrides the per-message total attachment storage cap.
+   * 0 uses the server default.
+   */
+  max_attachment_bytes?: number;
+}
+
 export interface StructsEndpoint {
   address?: string;
+}
+
+export interface StructsErrorResponse {
+  error?: string;
 }
 
 export interface StructsExecuteLog {
@@ -688,15 +1917,39 @@ export interface StructsExecuteLogResponse {
 export interface StructsExecuteRequest {
   account_id?: string;
   configuration_id?: string;
+  /**
+   * DeliveryError is the transport-level error string for an
+   * ExecutionModeResponse run when delivery failed without an HTTP
+   * response (timeout, connection refused, TLS error). Empty when an HTTP
+   * response was received, even a 5xx.
+   */
+  delivery_error?: string;
   function_id?: string;
   request?: StructsRequest;
   request_id?: string;
+  /**
+   * Response carries the destination's reply for ExecutionModeResponse
+   * runs. Status is the HTTP status code (0 when there was no response —
+   * a connection error or timeout), Body is the (inline) response body,
+   * Header the response headers. Unset for input/output functions.
+   */
+  response?: StructsResponse;
   response_body_path?: string;
 }
 
 export interface StructsExecuteResponse {
   error?: string;
   function_id?: string;
+  /**
+   * Logs is the output the function itself emitted through console.log /
+   * console.warn / console.error (JavaScript) or print (Lua) during this
+   * execution. Captured per execution and persisted with the ExecuteLog so
+   * the dashboard, the REST API and the MCP `execute` tool can show users
+   * what their own code printed — before this existed the output went only
+   * to the platform's internal logs and was invisible to the account.
+   * Bounded by pkg/reactor/functionlogs; secrets are redacted at capture.
+   */
+  logs?: StructsFunctionLogEntry[];
   request?: StructsRequest;
   request_id?: string;
   request_modified?: boolean;
@@ -715,13 +1968,58 @@ export interface StructsFunction {
   account_id?: string;
   compression?: string;
   created?: number;
+  /**
+   * CreatedBy is the account ID of the user who created the function —
+   * for organization accounts this is the acting member. Empty means
+   * the account owner.
+   */
+  created_by?: string;
   driver?: string;
   id?: string;
   metadata?: Record<string, string>;
   name?: string;
   payload?: string;
   payload_size?: number;
+  requirements?: StructsFunctionConnectionRequirement[];
   updated?: number;
+}
+
+export interface StructsFunctionConnectionRequirement {
+  alias?: string;
+  connection_types?: string[];
+  module?: string;
+  required?: boolean;
+  service_connection_id?: string;
+  service_connection_name?: string;
+  status?: string;
+}
+
+export interface StructsFunctionLogEntry {
+  level?: string;
+  message?: string;
+  /**
+   * Time is the capture time in Unix milliseconds. Useful when a function
+   * interleaves logging with slow calls (http, bigquery) and the gaps
+   * matter.
+   */
+  time?: number;
+}
+
+export interface StructsFunctionVersion {
+  account_id?: string;
+  created_at?: number;
+  /** CreatedBy is the acting account when known (org member, token owner). */
+  created_by?: string;
+  driver?: string;
+  function_id?: string;
+  name?: string;
+  payload?: string;
+  payload_size?: number;
+  /** RestoredFrom is set when the revision was created by restoring another. */
+  restored_from?: number;
+  /** Source names what saved the revision: api, mcp, agent, restore. */
+  source?: string;
+  version?: number;
 }
 
 export interface StructsGCPGCSInput {
@@ -773,6 +2071,23 @@ export interface StructsHeader {
 }
 
 export type StructsHeaders = Record<string, any>;
+
+export interface StructsHealthEndpointConfig {
+  basic_password?: string;
+  basic_username?: string;
+  headers?: Record<string, string>;
+  method?: string;
+  path?: string;
+}
+
+export interface StructsIncidentDayStats {
+  count?: number;
+  day?: string;
+  duration_seconds_count?: number;
+  duration_seconds_sum?: number;
+  open_count?: number;
+  resolved_count?: number;
+}
 
 export interface StructsIngressRule {
   /** Endpoints */
@@ -841,7 +2156,9 @@ export interface StructsInput {
    */
   strip_path_prefix?: boolean;
   /**
-   * TLSVersion sets the minimum accepted TLS version for this input's HTTPS endpoint. It is a floor, not a pin: handshakes negotiate this version or any higher one the backend allows (for example 1.1 still accepts 1.2 and 1.3).
+   * TLSVersion sets the MINIMUM accepted TLS version for this input's HTTPS
+   * endpoint. It is a floor, not a pin: handshakes negotiate this version or
+   * any higher one the backend allows (e.g. "1.1" still accepts 1.2 and 1.3).
    * Empty value means default hardened policy.
    */
   tls_version?: string;
@@ -849,6 +2166,13 @@ export interface StructsInput {
 }
 
 export interface StructsIntegrationConfiguration {
+  /**
+   * AlertPolicy controls when delivery failures open and resolve incidents.
+   * It is evaluated from the durable update stream in the worker, not on the
+   * request path, so high-throughput buckets never query configuration per
+   * webhook or emit one notification per failure.
+   */
+  alert_policy?: StructsAlertPolicy;
   buckets?: StructsBucket[];
   /**
    * notification plugin configuration, free form JSON. Each plugin parses whatever configuration
@@ -873,8 +2197,22 @@ export interface StructsIntegrationConfiguration {
 
 export type StructsJSONB = Record<string, any>;
 
+export interface StructsLLMServiceConnection {
+  api_key?: string;
+  base_url?: string;
+}
+
 export interface StructsLog {
   account_id?: string;
+  /**
+   * Attempts is the delivery attempt history (one entry per try, oldest
+   * first, attempt_no 1-based). Populated by GetLog from turbostore v2's
+   * WebhookDetail; carried on the update path so the worker's queue
+   * consumer can emit attempt events. Empty for single first-try
+   * successes, logs written before attempt capture, and ClickHouse
+   * reads. Never stored by GORM.
+   */
+  attempts?: StructsLogAttempt[];
   /** Body is either set or populated from BodyBytes during MarshalJSON() */
   body?: string;
   bucket_id?: string;
@@ -883,6 +2221,7 @@ export interface StructsLog {
    * was used
    */
   compression?: string;
+  consumer_id?: string;
   created_at?: number;
   deleted_at?: string;
   duration_ms?: number;
@@ -891,6 +2230,7 @@ export interface StructsLog {
    * inherits from the bucket configuration
    */
   ephemeral?: boolean;
+  event_type?: string;
   extra_path?: string;
   /** request details */
   headers?: StructsHeaders;
@@ -906,6 +2246,8 @@ export interface StructsLog {
   input_id?: string;
   internal?: boolean;
   ip_address?: string;
+  /** Outbound message identity; set only on outbound logs (IsOutbound). */
+  message_id?: string;
   method?: string;
   /**
    * OutputFunctionExecutionID is the reactor ExecuteLog id for the
@@ -914,8 +2256,22 @@ export interface StructsLog {
    */
   output_function_execution_id?: string;
   output_id?: string;
+  /**
+   * OutputResponseFunctionExecutionID is the reactor ExecuteLog id for
+   * the per-output response (post-delivery) function. Empty when no
+   * response function ran.
+   */
+  output_response_function_execution_id?: string;
   raw_query?: string;
+  /**
+   * RequestBytes and ResponseBytes contain recorded body + HTTP header
+   * bytes for this delivery. They exclude request/status lines, the final
+   * blank header line, TLS, and transport framing. GORM ignores them so
+   * ClickHouse remains unchanged; Turbostore persists and aggregates them.
+   */
+  request_bytes?: number;
   response_body?: number[];
+  response_bytes?: number;
   response_headers?: StructsHeaders;
   retries?: number;
   /**
@@ -928,19 +2284,58 @@ export interface StructsLog {
    * (e.g. gcp_pubsub, aws_sqs, aws_sns, aws_s3, gcp_gcs)
    */
   service_connection_output_type?: string;
-  status?: StructsRequestStatus;
+  status?:
+    | "preparing"
+    | "sent"
+    | "failed"
+    | "stalled"
+    | "received"
+    | "rejected";
   status_code?: number;
+  total_bytes?: number;
   updated_at?: number;
+}
+
+export interface StructsLogAttempt {
+  attempt_id?: string;
+  attempt_no?: number;
+  duration_ms?: number;
+  error?: string;
+  finished_at?: string;
+  outcome?: StructsLogAttemptOutcome;
+  request_headers?: StructsHeaders;
+  response_body?: number[];
+  response_headers?: StructsHeaders;
+  started_at?: string;
+  status_code?: number;
+  truncated?: boolean;
 }
 
 export interface StructsLogsStats {
   day?: string;
+  duration_ms_count?: number;
+  /**
+   * DurationMsSum / DurationMsCount carry the raw inputs for the mean
+   * delivery latency on this day (sum of per-row duration_ms over the
+   * rows that recorded one, and how many did). The mean is sum/count;
+   * keeping the two parts lets a caller aggregate days correctly
+   * (sum-of-sums / sum-of-counts) instead of averaging averages.
+   * Populated only on the turbostore stats path, like the retry fields.
+   */
+  duration_ms_sum?: number;
   failures?: number;
   max_retries?: number;
   received?: number;
+  /**
+   * Size fields are Turbostore-only recorded body + HTTP header totals.
+   * TotalBytes is RequestBytes + ResponseBytes.
+   */
+  request_bytes?: number;
+  response_bytes?: number;
   retried?: number;
   retry_count?: number;
   success?: number;
+  total_bytes?: number;
 }
 
 export type StructsMetadata = Record<string, any>;
@@ -964,6 +2359,149 @@ export interface StructsNewsEntryCreateRequest {
   message_of_the_day?: boolean;
   url?: string;
   visible?: boolean;
+}
+
+export interface StructsOrganizationInvite {
+  created_at?: string;
+  /**
+   * Email is stored lowercased and matched against the invitee
+   * account's email on accept.
+   */
+  email?: string;
+  expires_at?: string;
+  id?: string;
+  /** InvitedBy is the account ID of the inviter (actor). */
+  invited_by?: string;
+  org_account_id?: string;
+  role?: string;
+  status?: string;
+  updated_at?: string;
+}
+
+export interface StructsOrganizationInviteDetails {
+  created_at?: string;
+  /**
+   * Email is stored lowercased and matched against the invitee
+   * account's email on accept.
+   */
+  email?: string;
+  expires_at?: string;
+  id?: string;
+  /** InvitedBy is the account ID of the inviter (actor). */
+  invited_by?: string;
+  invited_by_email?: string;
+  org_account_id?: string;
+  organization_description?: string;
+  organization_logo?: string;
+  organization_name?: string;
+  role?: string;
+  status?: string;
+  updated_at?: string;
+}
+
+export interface StructsOrganizationMember {
+  created_at?: string;
+  id?: string;
+  /** InvitedBy is the account ID of the inviter (actor). */
+  invited_by?: string;
+  member_account_id?: string;
+  org_account_id?: string;
+  /** admin/billing/member */
+  role?: string;
+  updated_at?: string;
+}
+
+export interface StructsOrganizationMemberDetails {
+  avatar_url?: string;
+  created_at?: string;
+  email?: string;
+  id?: string;
+  /** InvitedBy is the account ID of the inviter (actor). */
+  invited_by?: string;
+  member_account_id?: string;
+  mfa_enabled?: boolean;
+  org_account_id?: string;
+  /** admin/billing/member */
+  role?: string;
+  updated_at?: string;
+  username?: string;
+}
+
+export interface StructsOrganizationMembershipDetails {
+  created_at?: string;
+  id?: string;
+  /** InvitedBy is the account ID of the inviter (actor). */
+  invited_by?: string;
+  member_account_id?: string;
+  org_account_id?: string;
+  organization_description?: string;
+  organization_logo?: string;
+  organization_name?: string;
+  /** admin/billing/member */
+  role?: string;
+  updated_at?: string;
+}
+
+export interface StructsOutboundConsumer {
+  created_at?: string;
+  id?: string;
+  name?: string;
+  rate?: number;
+  updated_at?: string;
+}
+
+export interface StructsOutboundEndpoint {
+  auto_disable?: boolean;
+  consecutive_failures?: number;
+  consumer?: string;
+  created_at?: string;
+  description?: string;
+  event_types?: string[];
+  failing_since?: string;
+  function_id?: string;
+  headers?: Record<string, string>;
+  id?: string;
+  previous_secret_expires_at?: string;
+  rate?: number;
+  state?: "active" | "failing" | "paused" | "disabled";
+  /** seconds; zero uses OutboundDefaultTimeout */
+  timeout?: number;
+  updated_at?: string;
+  url?: string;
+}
+
+export interface StructsOutboundEventType {
+  created_at?: string;
+  deprecated?: boolean;
+  description?: string;
+  example?: object;
+  name?: string;
+  updated_at?: string;
+}
+
+export interface StructsOutboundMessage {
+  consumer?: string;
+  created_at?: string;
+  endpoint_ids?: string[];
+  enqueued_at?: string;
+  event_id?: string;
+  event_type?: string;
+  id?: string;
+  payload?: object;
+}
+
+export interface StructsOutboundRecoveryTask {
+  created_at?: string;
+  endpoint_id?: string;
+  error?: string;
+  id?: string;
+  kind?: "retry" | "recover" | "replay-missing";
+  message_id?: string;
+  processed?: number;
+  since?: string;
+  status?: "pending" | "running" | "completed" | "failed";
+  until?: string;
+  updated_at?: string;
 }
 
 export interface StructsOutput {
@@ -1004,6 +2542,24 @@ export interface StructsOutput {
   lock_path?: boolean;
   name?: string;
   /**
+   * ReplayMissing configures recovery of internal deliveries that were
+   * persisted as received but never reached an agent. When an agent connects,
+   * matching rows from the configured lookback window are sent directly to
+   * that connection, up to Limit. Stored as JSON so the policy can grow
+   * without a schema migration.
+   */
+  replay_missing?: StructsReplayMissingConfig;
+  /**
+   * ResponseFunctionID names a function that runs AFTER delivery, once the
+   * destination's response (or the final delivery error) is known. It is
+   * invoked for every terminal outcome — success, or failure after all
+   * retries are exhausted — and receives the response status/body/headers
+   * (and delivery error) so it can implement custom logic such as alerting
+   * on a 5xx, a timeout, or an empty body. The response function cannot
+   * modify the response that was already returned to the sender.
+   */
+  response_function_id?: string;
+  /**
    * additional retries (after the first 3 times fail). Setting
    * to -1 disables retries
    */
@@ -1029,7 +2585,23 @@ export interface StructsOutput {
 }
 
 export interface StructsPlanMeta {
+  /** Activity gates the account activity log (audit view) */
+  activity?: boolean;
+  /**
+   * AgentTokens is the monthly account-agent and managed-Function model-token
+   * allowance (input + output); UnlimitedAgentTokens (-1) removes the cap.
+   */
+  agent_tokens?: number;
+  /**
+   * AgentTokensExplicit records whether any metadata set the agent_tokens
+   * key itself (rather than the value falling back to a plan-family
+   * default). Admin runtime overrides only replace defaulted allowances,
+   * and comparing values cannot tell "explicitly granted 5M" from "basic
+   * default 5M" — this flag can.
+   */
+  agent_tokens_explicit?: boolean;
   agents?: number;
+  alert_policies?: number;
   custom_hostnames?: boolean;
   custom_subdomains?: boolean;
   custom_tls_version?: boolean;
@@ -1046,11 +2618,41 @@ export interface StructsPlanMeta {
   /** whether plan should be visible to public */
   public?: boolean;
   reserved_domains?: number;
+  /** SamlSso gates self-service SAML SSO configuration (organization accounts) */
+  saml_sso?: boolean;
   sub_accounts?: number;
   tls_tunnels?: boolean;
   tokens?: number;
   tunnels?: number;
   webhooks?: number;
+}
+
+export interface StructsPublishOutboundMessageRequest {
+  consumer?: string;
+  event_id?: string;
+  event_type?: string;
+  payload?: object;
+}
+
+export interface StructsReplayMissingConfig {
+  /** Enabled toggles replay-on-connect for this output. */
+  enabled?: boolean;
+  /**
+   * Limit bounds the scan itself: the newest Limit received rows in the
+   * lookback window are considered, and the eligible ones among them are
+   * replayed oldest-first. Rows skipped by connection filters or status
+   * re-checks still consume the budget — the bound is deliberately on rows
+   * scanned, not rows delivered, so a fully-filtered window cannot trigger
+   * an unbounded walk of the lookback. The server additionally
+   * clamps/validates this against its environment configured maximum.
+   */
+  limit?: number;
+  /**
+   * Lookback selects received logs newer than now-Lookback. It is stored as
+   * a Go duration (nanoseconds in the REST JSON, consistent with durability
+   * and throttle duration fields).
+   */
+  lookback?: TimeDuration;
 }
 
 export interface StructsRequest {
@@ -1076,6 +2678,67 @@ export interface StructsResponse {
   status?: number;
 }
 
+export interface StructsRetryTask {
+  account_id?: string;
+  bucket_id?: string;
+  completed_at?: string;
+  created_at?: string;
+  /** Error carries a human-readable reason when Status is failed. */
+  error?: string;
+  failed?: number;
+  id?: string;
+  /**
+   * Matched is the number of candidate logs found, Processed the
+   * number re-dispatched successfully, Failed the number that
+   * errored while being re-dispatched.
+   */
+  matched?: number;
+  /**
+   * OutputID optionally narrows the operation to a single output.
+   * Empty means every output in the bucket.
+   */
+  output_id?: string;
+  processed?: number;
+  /**
+   * Since/Until bound the candidate window by the log's received
+   * time. Until is optional (zero means "now" at run time).
+   */
+  since?: string;
+  started_at?: string;
+  status?: StructsRetryTaskStatus;
+  /**
+   * Truncated is set when the candidate set hit the per-task cap and
+   * older matching logs in the window were left untouched.
+   */
+  truncated?: boolean;
+  type?: StructsRetryTaskType;
+  until?: string;
+  updated_at?: string;
+}
+
+export interface StructsSamlSsoOrg {
+  /** Which Webhook Relay account this SSO belongs to */
+  account_id?: string;
+  created_at?: string;
+  deleted_at?: string;
+  details?: StructsDBSSODetails;
+  /**
+   * EmailAttributeName default is empty, but it could be set to something like
+   * "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" so we can look for it specifically
+   */
+  email_attribute_name?: string;
+  entity_id?: string;
+  id?: string;
+  name?: string;
+  /** URL to SAML metadata */
+  saml_metadata_url?: string;
+  updated_at?: string;
+}
+
+export interface StructsSecretServiceConnection {
+  value?: string;
+}
+
 export interface StructsServiceConnection {
   account_id?: string;
   aws_service_connection?: StructsAWSServiceConnection;
@@ -1086,8 +2749,10 @@ export interface StructsServiceConnection {
   /** ULID, starts with prefix "scn_" */
   id?: string;
   last_checked?: string;
+  llm_service_connection?: StructsLLMServiceConnection;
   name?: string;
   retries?: number;
+  secret_service_connection?: StructsSecretServiceConnection;
   service_type?: StructsServiceType;
   status?: StructsServiceConnectionStatus;
   updated_at?: string;
@@ -1099,6 +2764,13 @@ export interface StructsServiceConnectionInput {
   aws_sqs_input?: StructsAWSSQSInput;
   bucket_id?: string;
   created_at?: string;
+  /**
+   * EmailAddress is the computed inbound address for email-type inputs
+   * ({local-part}@<inbound-domain>). It is populated at the API layer from the
+   * server's configured inbound domain and is never persisted.
+   */
+  email_address?: string;
+  email_input?: StructsEmailInput;
   error?: string;
   function_id?: string;
   gcp_gcs_input?: StructsGCPGCSInput;
@@ -1141,6 +2813,12 @@ export interface StructsSubAccount {
   auth_type?: StructsAccountAuthType;
   avatar_url?: string;
   created_at?: string;
+  /**
+   * CreatedBy attributes the sub-account to whoever created it (an org
+   * member's account ID; empty = the account owner). Used to revoke
+   * sub-accounts an org member created when they leave the org.
+   */
+  created_by?: string;
   deleted_at?: string;
   email?: string;
   failed_login_attempts?: number;
@@ -1193,6 +2871,75 @@ export interface StructsSubscriptionResponse {
   trial_start?: number;
 }
 
+export interface StructsSuspiciousDetectionConfig {
+  high_score?: number;
+  high_signal_sets?: string[][];
+  max_body_bytes?: number;
+  max_walk_depth?: number;
+  max_walk_nodes?: number;
+  min_score?: number;
+  realtime_enabled?: boolean;
+  rules?: StructsSuspiciousDetectionRule[];
+}
+
+export interface StructsSuspiciousDetectionRule {
+  category?: string;
+  description?: string;
+  enabled?: boolean;
+  id?: string;
+  key_groups?: StructsSuspiciousMatchGroup[];
+  match_local_paths?: boolean;
+  value_groups?: StructsSuspiciousMatchGroup[];
+  weight?: number;
+}
+
+export interface StructsSuspiciousEvent {
+  account_id?: string;
+  bucket_id?: string;
+  category?: string;
+  client?: string;
+  created_at?: string;
+  id?: string;
+  input_id?: string;
+  log_id?: string;
+  occurred_at?: string;
+  occurrences?: number;
+  output_id?: string;
+  provider?: string;
+  review_note?: string;
+  reviewed_at?: string;
+  reviewed_by_account_id?: string;
+  reviewed_by_email?: string;
+  reviews?: StructsSuspiciousEventReview[];
+  rule_version?: string;
+  score?: number;
+  severity?: string;
+  signals?: string[];
+  status?: StructsSuspiciousEventStatus;
+  updated_at?: string;
+}
+
+export interface StructsSuspiciousEventReview {
+  created_at?: string;
+  event_id?: string;
+  id?: string;
+  log_id?: string;
+  note?: string;
+  reviewer_account_id?: string;
+  reviewer_email?: string;
+  status?: StructsSuspiciousEventStatus;
+}
+
+export interface StructsSuspiciousMatchGroup {
+  min_matches?: number;
+  /**
+   * Scope is "global" or "object". Object scope is valid for key groups
+   * and requires the terms to coexist in one JSON object.
+   */
+  scope?: string;
+  terms?: string[];
+}
+
 export interface StructsThrottleConfig {
   /**
    * Deadline caps how long a queued webhook may wait for delivery,
@@ -1228,6 +2975,15 @@ export interface StructsThrottleConfig {
   rate?: number;
 }
 
+export interface StructsTokenPermissions {
+  /**
+   * Outbound restricts this token to outbound API operations only. Empty
+   * retains general API access.
+   */
+  outbound?: "read" | "publish" | "manage";
+  role?: "admin" | "billing" | "member" | "viewer";
+}
+
 export interface StructsTunnel {
   account_id?: string;
   /**
@@ -1243,6 +2999,12 @@ export interface StructsTunnel {
   agent_id?: string;
   auth?: StructsTunnelAuth;
   created_at?: number;
+  /**
+   * CreatedBy is the account ID of the user who created the tunnel —
+   * for organization accounts this is the acting member. Empty means
+   * the account owner (agent auto-created tunnels leave it empty too).
+   */
+  created_by?: string;
   /** crypto types, used to issue lets encrypt certs */
   crypto?: string;
   description?: string;
@@ -1304,6 +3066,12 @@ export interface StructsUsage {
   created_at?: string;
   inputs?: number;
   outputs?: number;
+  /**
+   * Seats is the shared organization-seat usage: sub-accounts plus
+   * organization members and active pending invitations. On a personal
+   * account it is simply the number of sub-accounts.
+   */
+  seats?: number;
   tokens?: number;
   tunnels?: number;
   webhooks?: number;
@@ -1330,11 +3098,47 @@ export interface StructsWebhooksCount {
   preparing?: number;
   received?: number;
   rejected?: number;
+  /**
+   * Turbostore-only recorded body + HTTP header totals. Each delivery
+   * contributes once, so output fan-out is counted in proportion to the
+   * application-layer network traffic it creates.
+   */
+  request_bytes?: number;
+  response_bytes?: number;
   sent?: number;
   stalled?: number;
   /** daily/monthly term of the calculation */
   term?: StructsWebhooksCountTerm;
+  total_bytes?: number;
   updated_at?: string;
+}
+
+export interface TrafficstatsSnapshot {
+  client?: Record<string, number>;
+  clientVersion?: Record<string, number>;
+  contentType?: Record<string, number>;
+  country?: Record<string, number>;
+  flushedAt?: string;
+  hostname?: string;
+  ipVersion?: Record<string, number>;
+  language?: Record<string, number>;
+  method?: Record<string, number>;
+  provider?: Record<string, number>;
+  /** "<provider>|<country>" */
+  providerCountry?: Record<string, number>;
+  /** "<provider>|<event type>" */
+  providerEvent?: Record<string, number>;
+  /** "<provider>|<language>" */
+  providerLanguage?: Record<string, number>;
+  /** "<provider>|<tls>" */
+  providerTls?: Record<string, number>;
+  /** payload size bucket (from Content-Length) */
+  size?: Record<string, number>;
+  startedAt?: string;
+  tlsCipher?: Record<string, number>;
+  tlsVersion?: Record<string, number>;
+  total?: number;
+  version?: number;
 }
 
 export type QueryParamsType = Record<string | number, any>;
@@ -1605,6 +3409,47 @@ export class Api<
 > extends HttpClient<SecurityDataType> {
   v1 = {
     /**
+     * @description Get the effective account (the organization account when acting through the X-Org-ID override)
+     *
+     * @tags account
+     * @name AccountList
+     * @summary Get current account
+     * @request GET:/v1/account
+     * @secure
+     */
+    accountList: (params: RequestParams = {}) =>
+      this.request<StructsAccount, any>({
+        path: `/v1/account`,
+        method: "GET",
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Update account settings, including quota notification thresholds and up to 10 additional validated email recipients, plus the organization profile. Organization fields are optional. Converting to an organization is one-way (the flag can never be unset) and only the account owner can do it — not org admins acting through the override. The logo must be a small data:image/...;base64 payload.
+     *
+     * @tags account
+     * @name AccountUpdate
+     * @summary Update account
+     * @request PUT:/v1/account
+     * @secure
+     */
+    accountUpdate: (
+      account: ApiUpdateAccountRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/v1/account`,
+        method: "PUT",
+        body: account,
+        secure: true,
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
      * @description Get the account API key. If no key exists, a new one will be generated.
      *
      * @tags account
@@ -1659,6 +3504,61 @@ export class Api<
         path: `/v1/account/api-key`,
         method: "PUT",
         body: request,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Audit entries for the effective account: who did what (owners, org members, sub-accounts). Restricted to the owner and org admins.
+     *
+     * @tags account
+     * @name AccountAuditList
+     * @summary Account activity log
+     * @request GET:/v1/account/audit
+     * @secure
+     */
+    accountAuditList: (
+      query?: {
+        /** Page size (default 50, max 200) */
+        limit?: number;
+        /** Offset */
+        offset?: number;
+        /** Comma-separated resource kinds */
+        filter?: string;
+        /** Filter by acting user's username */
+        username?: string;
+        /** Filter by action (created/updated/deleted/...) */
+        action?: string;
+        /** Filter by surface: mcp (an MCP client) or agent (the agent chat) */
+        source?: string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiAccountAuditResponse, any>({
+        path: `/v1/account/audit`,
+        method: "GET",
+        query: query,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description List everyone who can have created resources on the effective account — the owner, organization members and sub-accounts. Used by the dashboard to resolve created_by attribution.
+     *
+     * @tags account
+     * @name AccountCreatorsList
+     * @summary List account creator identities
+     * @request GET:/v1/account/creators
+     * @secure
+     */
+    accountCreatorsList: (params: RequestParams = {}) =>
+      this.request<ApiCreatorIdentity[], any>({
+        path: `/v1/account/creators`,
+        method: "GET",
         secure: true,
         type: ContentType.Json,
         format: "json",
@@ -1731,6 +3631,307 @@ export class Api<
       }),
 
     /**
+     * @description List all Webhook Relay accounts for platform administration and account selection.
+     *
+     * @tags admin
+     * @name AccountsList
+     * @summary List accounts (admin)
+     * @request GET:/v1/accounts
+     * @secure
+     */
+    accountsList: (params: RequestParams = {}) =>
+      this.request<StructsAccount[], string>({
+        path: `/v1/accounts`,
+        method: "GET",
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Manually set the suspended flag on every bucket belonging to any account. Manual suspension is rejected while suspend protection is enabled.
+     *
+     * @tags admin, accounts
+     * @name AdminAccountsBucketsSuspensionUpdate
+     * @summary Suspend or unsuspend all account buckets (admin)
+     * @request PUT:/v1/admin/accounts/{id}/buckets/suspension
+     * @secure
+     */
+    adminAccountsBucketsSuspensionUpdate: (
+      id: string,
+      suspension: ApiAdminBucketSuspensionUpdateRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiAdminBucketSuspensionResponse, StructsErrorResponse>({
+        path: `/v1/admin/accounts/${id}/buckets/suspension`,
+        method: "PUT",
+        body: suspension,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Change an account's login email and/or authentication type. Authentication type is limited to regular, github, or google; SAML identities remain managed through SSO configuration. Email verification state is preserved.
+     *
+     * @tags admin
+     * @name AdminAccountsIdentityUpdate
+     * @summary Update account sign-in identity (admin)
+     * @request PUT:/v1/admin/accounts/{id}/identity
+     * @secure
+     */
+    adminAccountsIdentityUpdate: (
+      id: string,
+      identity: ApiAdminAccountIdentityUpdateRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiAdminAccountSearchResult, StructsErrorResponse>({
+        path: `/v1/admin/accounts/${id}/identity`,
+        method: "PUT",
+        body: identity,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get stored subscription status, billing term dates, plan and subscription metadata, effective entitlements, extras and suspension protection for any account.
+     *
+     * @tags admin, accounts
+     * @name AdminAccountsStatusList
+     * @summary Get account subscription status (admin)
+     * @request GET:/v1/admin/accounts/{id}/status
+     * @secure
+     */
+    adminAccountsStatusList: (id: string, params: RequestParams = {}) =>
+      this.request<ApiAdminAccountStatus, StructsErrorResponse>({
+        path: `/v1/admin/accounts/${id}/status`,
+        method: "GET",
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Enable or disable the manual override that prevents automated quota and billing paths from suspending any account's buckets.
+     *
+     * @tags admin, accounts
+     * @name AdminAccountsSuspendProtectionUpdate
+     * @summary Update account suspend protection (admin)
+     * @request PUT:/v1/admin/accounts/{id}/suspend-protection
+     * @secure
+     */
+    adminAccountsSuspendProtectionUpdate: (
+      id: string,
+      protection: ApiAdminSuspendProtectionUpdateRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiAdminAccountStatus, StructsErrorResponse>({
+        path: `/v1/admin/accounts/${id}/suspend-protection`,
+        method: "PUT",
+        body: protection,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Accounts created at or after `created_after`, oldest first, for reconciling a registration feed. Registration identity only — no billing metadata or account-owned resources.
+     *
+     * @tags admin, organizations
+     * @name AdminAccountsRecentList
+     * @summary List recent registrations (admin)
+     * @request GET:/v1/admin/accounts/recent
+     * @secure
+     */
+    adminAccountsRecentList: (
+      query: {
+        /** RFC 3339 timestamp; accounts created at or after this instant */
+        created_after: string;
+        /**
+         * Maximum results (default 100, max 500)
+         * @min 1
+         * @max 500
+         */
+        limit?: number;
+        /**
+         * Offset into the result set
+         * @min 0
+         */
+        offset?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiAdminRecentAccountsResponse, StructsErrorResponse>({
+        path: `/v1/admin/accounts/recent`,
+        method: "GET",
+        query: query,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Search accounts by email or username prefix, or by exact account ID. Results are bounded for server-backed admin account selectors.
+     *
+     * @tags admin, organizations
+     * @name AdminAccountsSearchList
+     * @summary Search accounts (admin)
+     * @request GET:/v1/admin/accounts/search
+     * @secure
+     */
+    adminAccountsSearchList: (
+      query: {
+        /**
+         * Email/username prefix or exact account ID
+         * @minLength 2
+         */
+        query: string;
+        /**
+         * Maximum results (default 20, max 50)
+         * @min 1
+         * @max 50
+         */
+        limit?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiAdminAccountSearchResult[], StructsErrorResponse>({
+        path: `/v1/admin/accounts/search`,
+        method: "GET",
+        query: query,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Every conversation across accounts with its session aggregates, newest activity first; filter by account_id, stop_cause, or rated=up|down|any
+     *
+     * @tags admin
+     * @name AdminAgentConversationsList
+     * @summary List agent conversations (admin)
+     * @request GET:/v1/admin/agent/conversations
+     * @secure
+     */
+    adminAgentConversationsList: (
+      query?: {
+        /** Only this account */
+        account_id?: string;
+        /** Only conversations whose last turn ended with this cause */
+        stop_cause?: string;
+        /** up, down or any: only conversations with that feedback */
+        rated?: string;
+        /** any, approved, denied, expired, canceled or pending: only conversations whose destructive calls asked the user */
+        approvals?: string;
+        /** Page size (default 50, max 200) */
+        limit?: number;
+        /** Page offset */
+        offset?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<AgentAdminPage, string>({
+        path: `/v1/admin/agent/conversations`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description One conversation with its stored transcript, latest 500 tool calls and inferences, latest 200 prompts, feedback and approvals; truncated flags identify omitted earlier evidence
+     *
+     * @tags admin
+     * @name AdminAgentConversationsDetail
+     * @summary Agent conversation detail (admin)
+     * @request GET:/v1/admin/agent/conversations/{id}
+     * @secure
+     */
+    adminAgentConversationsDetail: (id: string, params: RequestParams = {}) =>
+      this.request<AgentAdminDetail, string>({
+        path: `/v1/admin/agent/conversations/${id}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description The runtime-adjustable agent limits: stored overrides, deployed defaults and the effective values. Overrides live in the database so they can be tuned without a deployment.
+     *
+     * @tags admin
+     * @name AdminAgentLimitsList
+     * @summary Agent limit overrides (admin)
+     * @request GET:/v1/admin/agent/limits
+     * @secure
+     */
+    adminAgentLimitsList: (params: RequestParams = {}) =>
+      this.request<ApiAdminAgentLimits, string>({
+        path: `/v1/admin/agent/limits`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Replaces the stored override set. A zero or omitted field clears that override back to the deployed default. Every replica picks the change up within seconds.
+     *
+     * @tags admin
+     * @name AdminAgentLimitsUpdate
+     * @summary Update agent limit overrides (admin)
+     * @request PUT:/v1/admin/agent/limits
+     * @secure
+     */
+    adminAgentLimitsUpdate: (
+      body: ApiAdminAgentLimitsUpdateRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiAdminAgentLimits, string>({
+        path: `/v1/admin/agent/limits`,
+        method: "PUT",
+        body: body,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description All-time cross-account totals and latest-session stop causes, plus a UTC daily activity series for the last N days counting conversation creation, prompt settlement, and tool-call timestamps
+     *
+     * @tags admin
+     * @name AdminAgentStatsList
+     * @summary Agent usage totals (admin)
+     * @request GET:/v1/admin/agent/stats
+     * @secure
+     */
+    adminAgentStatsList: (
+      query?: {
+        /** Length of the daily series (default 30) */
+        days?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<AgentAdminStats, string>({
+        path: `/v1/admin/agent/stats`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get list of all connected clients across all accounts from the state tracker service.
      *
      * @tags admin
@@ -1743,6 +3944,1062 @@ export class Api<
       this.request<StructsAdminConnectedClientsResponse, string>({
         path: `/v1/admin/connected-clients`,
         method: "GET",
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Canonical schema for Stripe plan/subscription metadata used by enterprise deals. Numeric limits and boolean capabilities include labels, descriptions, groups, units, aliases, and validation bounds.
+     *
+     * @tags admin, enterprise-crm
+     * @name AdminEnterpriseDealsMetadataSchemaList
+     * @summary List supported enterprise entitlement metadata fields (admin)
+     * @request GET:/v1/admin/enterprise-deals/metadata-schema
+     * @secure
+     */
+    adminEnterpriseDealsMetadataSchemaList: (params: RequestParams = {}) =>
+      this.request<ApiEnterprisePlanMetadataSchemaResponse, any>({
+        path: `/v1/admin/enterprise-deals/metadata-schema`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description List every active or inactive organization account with owner identity and member/sub-account counts.
+     *
+     * @tags admin, organizations
+     * @name AdminOrgsList
+     * @summary List organizations (admin)
+     * @request GET:/v1/admin/orgs
+     * @secure
+     */
+    adminOrgsList: (params: RequestParams = {}) =>
+      this.request<ApiAdminOrganizationSummary[], StructsErrorResponse>({
+        path: `/v1/admin/orgs`,
+        method: "GET",
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get an organization account together with its member roster and active sub-accounts.
+     *
+     * @tags admin, organizations
+     * @name AdminOrgsDetail
+     * @summary Get organization details (admin)
+     * @request GET:/v1/admin/orgs/{id}
+     * @secure
+     */
+    adminOrgsDetail: (id: string, params: RequestParams = {}) =>
+      this.request<ApiAdminOrganizationDetails, StructsErrorResponse>({
+        path: `/v1/admin/orgs/${id}`,
+        method: "GET",
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Convert an individual account to an organization, or update an existing organization's name and description. Conversion is one-way. Admin operations bypass self-service seat limits.
+     *
+     * @tags admin, organizations
+     * @name AdminOrgsUpdate
+     * @summary Convert or update organization (admin)
+     * @request PUT:/v1/admin/orgs/{id}
+     * @secure
+     */
+    adminOrgsUpdate: (
+      id: string,
+      organization: ApiAdminOrganizationUpdateRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiAdminOrganizationSummary, StructsErrorResponse>({
+        path: `/v1/admin/orgs/${id}`,
+        method: "PUT",
+        body: organization,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Manually set the suspended flag on every organization bucket. Manual suspension is rejected while suspend protection is enabled.
+     *
+     * @tags admin, organizations
+     * @name AdminOrgsBucketsSuspensionUpdate
+     * @summary Suspend or unsuspend all organization buckets (admin)
+     * @request PUT:/v1/admin/orgs/{id}/buckets/suspension
+     * @secure
+     */
+    adminOrgsBucketsSuspensionUpdate: (
+      id: string,
+      suspension: ApiAdminBucketSuspensionUpdateRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiAdminBucketSuspensionResponse, StructsErrorResponse>({
+        path: `/v1/admin/orgs/${id}/buckets/suspension`,
+        method: "PUT",
+        body: suspension,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Directly link an existing active account to an organization with an assignable role. No invitation acceptance is required and admin operations bypass self-service seat limits.
+     *
+     * @tags admin, organizations
+     * @name AdminOrgsMembersCreate
+     * @summary Add organization member (admin)
+     * @request POST:/v1/admin/orgs/{id}/members
+     * @secure
+     */
+    adminOrgsMembersCreate: (
+      id: string,
+      member: ApiAdminOrganizationMemberCreateRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsOrganizationMemberDetails, StructsErrorResponse>({
+        path: `/v1/admin/orgs/${id}/members`,
+        method: "POST",
+        body: member,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Remove a member and revoke organization-bound access tokens and sub-accounts created by that member.
+     *
+     * @tags admin, organizations
+     * @name AdminOrgsMembersDelete
+     * @summary Remove organization member (admin)
+     * @request DELETE:/v1/admin/orgs/{id}/members/{memberID}
+     * @secure
+     */
+    adminOrgsMembersDelete: (
+      id: string,
+      memberId: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, StructsErrorResponse>({
+        path: `/v1/admin/orgs/${id}/members/${memberId}`,
+        method: "DELETE",
+        secure: true,
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * @description Change an existing organization member's role and update the role captured on organization-bound access tokens.
+     *
+     * @tags admin, organizations
+     * @name AdminOrgsMembersUpdate
+     * @summary Update organization member role (admin)
+     * @request PUT:/v1/admin/orgs/{id}/members/{memberID}
+     * @secure
+     */
+    adminOrgsMembersUpdate: (
+      id: string,
+      memberId: string,
+      member: ApiAdminOrganizationMemberUpdateRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsOrganizationMember, StructsErrorResponse>({
+        path: `/v1/admin/orgs/${id}/members/${memberId}`,
+        method: "PUT",
+        body: member,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get stored subscription status, billing term dates, plan and subscription metadata, effective entitlements, extras and suspension protection for an organization account.
+     *
+     * @tags admin, organizations
+     * @name AdminOrgsStatusList
+     * @summary Get organization subscription status (admin)
+     * @request GET:/v1/admin/orgs/{id}/status
+     * @secure
+     */
+    adminOrgsStatusList: (id: string, params: RequestParams = {}) =>
+      this.request<ApiAdminAccountStatus, StructsErrorResponse>({
+        path: `/v1/admin/orgs/${id}/status`,
+        method: "GET",
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Create a regular, GitHub, or Google sub-account directly under an organization. Regular accounts return a one-time password. Admin operations bypass self-service seat limits.
+     *
+     * @tags admin, organizations
+     * @name AdminOrgsSubAccountsCreate
+     * @summary Create organization sub-account (admin)
+     * @request POST:/v1/admin/orgs/{id}/sub-accounts
+     * @secure
+     */
+    adminOrgsSubAccountsCreate: (
+      id: string,
+      subAccount: ApiAdminSubAccountCreateRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsSubAccountCreateResponse, StructsErrorResponse>({
+        path: `/v1/admin/orgs/${id}/sub-accounts`,
+        method: "POST",
+        body: subAccount,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Delete a sub-account from the specified organization and immediately revoke its access.
+     *
+     * @tags admin, organizations
+     * @name AdminOrgsSubAccountsDelete
+     * @summary Delete organization sub-account (admin)
+     * @request DELETE:/v1/admin/orgs/{id}/sub-accounts/{subID}
+     * @secure
+     */
+    adminOrgsSubAccountsDelete: (
+      id: string,
+      subId: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, StructsErrorResponse>({
+        path: `/v1/admin/orgs/${id}/sub-accounts/${subId}`,
+        method: "DELETE",
+        secure: true,
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * @description Generate and return a new one-time password for a regular organization sub-account.
+     *
+     * @tags admin, organizations
+     * @name AdminOrgsSubAccountsResetPasswordCreate
+     * @summary Reset organization sub-account password (admin)
+     * @request POST:/v1/admin/orgs/{id}/sub-accounts/{subID}/reset-password
+     * @secure
+     */
+    adminOrgsSubAccountsResetPasswordCreate: (
+      id: string,
+      subId: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsSubAccountCreateResponse, StructsErrorResponse>({
+        path: `/v1/admin/orgs/${id}/sub-accounts/${subId}/reset-password`,
+        method: "POST",
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Enable or disable the manual override that prevents automated quota and billing paths from suspending the organization's buckets.
+     *
+     * @tags admin, organizations
+     * @name AdminOrgsSuspendProtectionUpdate
+     * @summary Update organization suspend protection (admin)
+     * @request PUT:/v1/admin/orgs/{id}/suspend-protection
+     * @secure
+     */
+    adminOrgsSuspendProtectionUpdate: (
+      id: string,
+      protection: ApiAdminSuspendProtectionUpdateRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiAdminAccountStatus, StructsErrorResponse>({
+        path: `/v1/admin/orgs/${id}/suspend-protection`,
+        method: "PUT",
+        body: protection,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get current billing-term usage and effective plan limits for an organization account. Live agents are reported as zero when State Tracker is unavailable; persisted usage remains available.
+     *
+     * @tags admin, organizations
+     * @name AdminOrgsUsageList
+     * @summary Get organization usage (admin)
+     * @request GET:/v1/admin/orgs/{id}/usage
+     * @secure
+     */
+    adminOrgsUsageList: (id: string, params: RequestParams = {}) =>
+      this.request<StructsCombinedUsage, StructsErrorResponse>({
+        path: `/v1/admin/orgs/${id}/usage`,
+        method: "GET",
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Lists real-time detector findings. Findings contain sanitized signal names and a reference to the canonical Turbostore webhook; no payload is copied into the review table.
+     *
+     * @tags admin, security
+     * @name AdminSuspiciousEventsList
+     * @summary List suspicious webhook findings
+     * @request GET:/v1/admin/suspicious-events
+     * @secure
+     */
+    adminSuspiciousEventsList: (
+      query?: {
+        /** Exact account ID */
+        account_id?: string;
+        /** Review status: open, confirmed, dismissed */
+        status?: string;
+        /** Severity: medium or high */
+        severity?: string;
+        /** Finding category */
+        category?: string;
+        /** Page size */
+        limit?: number;
+        /** Offset */
+        offset?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiSuspiciousEventListResponse, StructsErrorResponse>({
+        path: `/v1/admin/suspicious-events`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags admin, security
+     * @name AdminSuspiciousEventsDetail
+     * @summary Get a suspicious webhook finding
+     * @request GET:/v1/admin/suspicious-events/{id}
+     * @secure
+     */
+    adminSuspiciousEventsDetail: (id: string, params: RequestParams = {}) =>
+      this.request<StructsSuspiciousEvent, StructsErrorResponse>({
+        path: `/v1/admin/suspicious-events/${id}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Marks a finding confirmed, dismissed, or reopens it. This does not suspend the account.
+     *
+     * @tags admin, security
+     * @name AdminSuspiciousEventsReviewUpdate
+     * @summary Review a suspicious webhook finding
+     * @request PUT:/v1/admin/suspicious-events/{id}/review
+     * @secure
+     */
+    adminSuspiciousEventsReviewUpdate: (
+      id: string,
+      review: ApiSuspiciousEventReviewRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsSuspiciousEvent, StructsErrorResponse>({
+        path: `/v1/admin/suspicious-events/${id}/review`,
+        method: "PUT",
+        body: review,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Loads the canonical webhook directly from Turbostore for admin review. There is no ClickHouse fallback.
+     *
+     * @tags admin, security
+     * @name AdminSuspiciousEventsWebhookList
+     * @summary Get the Turbostore webhook for a suspicious finding
+     * @request GET:/v1/admin/suspicious-events/{id}/webhook
+     * @secure
+     */
+    adminSuspiciousEventsWebhookList: (
+      id: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiSuspiciousEventWebhookResponse, StructsErrorResponse>({
+        path: `/v1/admin/suspicious-events/${id}/webhook`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Runs only when called by an admin. The hunt is account-, bucket-, time-, and page-bounded and never reads ClickHouse. Continue with next_cursor until it is empty.
+     *
+     * @tags admin, security
+     * @name AdminSuspiciousEventsHuntCreate
+     * @summary Scan one bounded Turbostore history page for suspicious webhooks
+     * @request POST:/v1/admin/suspicious-events/hunt
+     * @secure
+     */
+    adminSuspiciousEventsHuntCreate: (
+      hunt: ApiSuspiciousHuntRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiSuspiciousHuntResponse, StructsErrorResponse>({
+        path: `/v1/admin/suspicious-events/hunt`,
+        method: "POST",
+        body: hunt,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns the effective database-backed rule set used for real-time detection and explicit historical hunts.
+     *
+     * @tags admin, security
+     * @name AdminSuspiciousEventsRulesList
+     * @summary Get suspicious webhook detection rules
+     * @request GET:/v1/admin/suspicious-events/rules
+     * @secure
+     */
+    adminSuspiciousEventsRulesList: (params: RequestParams = {}) =>
+      this.request<ApiSuspiciousDetectionSettingsResponse, any>({
+        path: `/v1/admin/suspicious-events/rules`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Validates and atomically replaces the detector rule set. Real-time processes refresh it within 15 seconds; no historical scan is started.
+     *
+     * @tags admin, security
+     * @name AdminSuspiciousEventsRulesUpdate
+     * @summary Replace suspicious webhook detection rules
+     * @request PUT:/v1/admin/suspicious-events/rules
+     * @secure
+     */
+    adminSuspiciousEventsRulesUpdate: (
+      settings: ApiSuspiciousDetectionSettingsRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        ApiSuspiciousDetectionSettingsResponse,
+        StructsErrorResponse
+      >({
+        path: `/v1/admin/suspicious-events/rules`,
+        method: "PUT",
+        body: settings,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Per-ingester-replica cumulative counters of incoming webhook traffic: provider fingerprint, client family/language, negotiated TLS version/cipher, sender country. No payloads or identifiers are collected.
+     *
+     * @tags admin
+     * @name AdminTrafficStatsList
+     * @summary Get aggregate incoming webhook traffic statistics (admin)
+     * @request GET:/v1/admin/traffic-stats
+     * @secure
+     */
+    adminTrafficStatsList: (params: RequestParams = {}) =>
+      this.request<ApiAdminTrafficStatsResponse, string>({
+        path: `/v1/admin/traffic-stats`,
+        method: "GET",
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns successfully sent quota notifications newest first, including account identity, threshold, usage/quota at send time, plan, and billing period. Filter by account_id for the account-details Usage alerts tab.
+     *
+     * @tags admin
+     * @name AdminUsageAlertsList
+     * @summary List sent quota usage alerts (admin)
+     * @request GET:/v1/admin/usage-alerts
+     * @secure
+     */
+    adminUsageAlertsList: (
+      query?: {
+        /** Filter to one account ID */
+        account_id?: string;
+        /**
+         * Page size (default 50, max 200)
+         * @min 1
+         * @max 200
+         */
+        limit?: number;
+        /**
+         * Page offset
+         * @min 0
+         */
+        offset?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiAdminUsageAlertsResponse, StructsErrorResponse>({
+        path: `/v1/admin/usage-alerts`,
+        method: "GET",
+        query: query,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Paginated cross-account bucket inventory with each bucket's inputs (incl. transformation functions) and outputs (destination URL, classified destination provider, type, functions). Answers "what are customers wiring the service up to".
+     *
+     * @tags admin
+     * @name AdminUsageBucketsList
+     * @summary List buckets across all accounts (admin)
+     * @request GET:/v1/admin/usage/buckets
+     * @secure
+     */
+    adminUsageBucketsList: (
+      query?: {
+        /** Filter to one account */
+        account_id?: string;
+        /**
+         * Page size (default 100, max 500)
+         * @min 1
+         * @max 500
+         */
+        limit?: number;
+        /**
+         * Page offset
+         * @min 0
+         */
+        offset?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiAdminUsageBucketsResponse, StructsErrorResponse>({
+        path: `/v1/admin/usage/buckets`,
+        method: "GET",
+        query: query,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Paginated cross-account output inventory: destination URL (basic-auth passwords masked), classified destination provider, internal/public type and attached functions, with bucket and account attribution. Use destination=substr to answer e.g. "who forwards to jenkins". Note destination_provider classifies the destination ADDRESS (jenkins, slack, localhost, private-network, ...) and is independent of the internal flag, which is the delivery mode: a private-IP destination delivered server-side shows internal=false with destination_provider=private-network.
+     *
+     * @tags admin
+     * @name AdminUsageOutputsList
+     * @summary List outputs across all accounts (admin)
+     * @request GET:/v1/admin/usage/outputs
+     * @secure
+     */
+    adminUsageOutputsList: (
+      query?: {
+        /** Filter to one account */
+        account_id?: string;
+        /** Case-insensitive destination URL substring filter */
+        destination?: string;
+        /**
+         * Page size (default 100, max 500)
+         * @min 1
+         * @max 500
+         */
+        limit?: number;
+        /**
+         * Page offset
+         * @min 0
+         */
+        offset?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiAdminUsageOutputsResponse, StructsErrorResponse>({
+        path: `/v1/admin/usage/outputs`,
+        method: "GET",
+        query: query,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Fleet-level classification of every output's destination (jenkins, slack, ms-teams, localhost, unknown, ...) plus internal/disabled/function counts. The inbound-side counterpart (which providers send us traffic, incl. fingerprinted event types) is /v1/admin/traffic-stats.
+     *
+     * @tags admin
+     * @name AdminUsageSummaryList
+     * @summary Aggregate destination usage across all outputs (admin)
+     * @request GET:/v1/admin/usage/summary
+     * @secure
+     */
+    adminUsageSummaryList: (params: RequestParams = {}) =>
+      this.request<ApiAdminUsageSummaryResponse, StructsErrorResponse>({
+        path: `/v1/admin/usage/summary`,
+        method: "GET",
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns a dense month-by-month series of inbound webhook requests. A webhook is counted once when received, independently of how many outputs it is delivered to. Defaults to the current month and previous 11 calendar months.
+     *
+     * @tags admin
+     * @name AdminUsageWebhooksList
+     * @summary Get monthly webhook volume for an account (admin)
+     * @request GET:/v1/admin/usage/webhooks
+     * @secure
+     */
+    adminUsageWebhooksList: (
+      query: {
+        /** Account ID */
+        account_id: string;
+        /** From date (YYYY-MM-DD); defaults to 11 months before the current month */
+        from?: string;
+        /** To date (YYYY-MM-DD); defaults to today */
+        to?: string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiAdminUsageWebhooksResponse, StructsErrorResponse>({
+        path: `/v1/admin/usage/webhooks`,
+        method: "GET",
+        query: query,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Whether the account agent is enabled on this server, which model answers, and what the caller's grant permits
+     *
+     * @tags agent
+     * @name AgentList
+     * @summary Agent status
+     * @request GET:/v1/agent
+     * @secure
+     */
+    agentList: (params: RequestParams = {}) =>
+      this.request<ApiAgentStatus, string>({
+        path: `/v1/agent`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Conversations of the authenticated account, newest activity first; filter by the page they were opened from
+     *
+     * @tags agent
+     * @name AgentConversationsList
+     * @summary List agent conversations
+     * @request GET:/v1/agent/conversations
+     * @secure
+     */
+    agentConversationsList: (
+      query?: {
+        /** Page kind the conversation was opened from (function, bucket, account) */
+        context_kind?: string;
+        /** ID of that page's resource */
+        context_id?: string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsAgentConversation[], string>({
+        path: `/v1/agent/conversations`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Open a conversation, optionally bound to the page it was started from (a function context must be the caller's own function)
+     *
+     * @tags agent
+     * @name AgentConversationsCreate
+     * @summary Create agent conversation
+     * @request POST:/v1/agent/conversations
+     * @secure
+     */
+    agentConversationsCreate: (
+      conversation: ApiAgentConversationRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsAgentConversation, string>({
+        path: `/v1/agent/conversations`,
+        method: "POST",
+        body: conversation,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Deletes the conversation and its stored transcript
+     *
+     * @tags agent
+     * @name AgentConversationsDelete
+     * @summary Delete agent conversation
+     * @request DELETE:/v1/agent/conversations/{id}
+     * @secure
+     */
+    agentConversationsDelete: (id: string, params: RequestParams = {}) =>
+      this.request<ApiResponse, string>({
+        path: `/v1/agent/conversations/${id}`,
+        method: "DELETE",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description The conversation, its stored transcript, and whether a turn is running on any replica
+     *
+     * @tags agent
+     * @name AgentConversationsDetail
+     * @summary Get agent conversation
+     * @request GET:/v1/agent/conversations/{id}
+     * @secure
+     */
+    agentConversationsDetail: (id: string, params: RequestParams = {}) =>
+      this.request<ApiAgentConversationDetail, string>({
+        path: `/v1/agent/conversations/${id}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags agent
+     * @name AgentConversationsUpdate
+     * @summary Rename agent conversation
+     * @request PUT:/v1/agent/conversations/{id}
+     * @secure
+     */
+    agentConversationsUpdate: (
+      id: string,
+      conversation: ApiAgentConversationRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiResponse, string>({
+        path: `/v1/agent/conversations/${id}`,
+        method: "PUT",
+        body: conversation,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Answers an approval_requested event: the paused call runs with the scope it lacked. With remember the scope is also recorded on the conversation, so later calls needing it do not ask. Limited by the caller's role. 202 when the answer was broadcast to the replica running the turn.
+     *
+     * @tags agent
+     * @name AgentConversationsApproveCreate
+     * @summary Allow a paused destructive tool call
+     * @request POST:/v1/agent/conversations/{id}/approve
+     * @secure
+     */
+    agentConversationsApproveCreate: (
+      id: string,
+      decision: ApiAgentApprovalRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiResponse, string>({
+        path: `/v1/agent/conversations/${id}/approve`,
+        method: "POST",
+        body: decision,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Stops the current turn; completed tool results are kept. 202 when the request was broadcast to the replica running the turn.
+     *
+     * @tags agent
+     * @name AgentConversationsCancelCreate
+     * @summary Cancel the running agent turn
+     * @request POST:/v1/agent/conversations/{id}/cancel
+     * @secure
+     */
+    agentConversationsCancelCreate: (id: string, params: RequestParams = {}) =>
+      this.request<ApiResponse, string>({
+        path: `/v1/agent/conversations/${id}/cancel`,
+        method: "POST",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Answers an approval_requested event: the call does not run and the agent is told, with the optional text as the reason. 202 when the answer was broadcast to the replica running the turn.
+     *
+     * @tags agent
+     * @name AgentConversationsDenyCreate
+     * @summary Decline a paused destructive tool call
+     * @request POST:/v1/agent/conversations/{id}/deny
+     * @secure
+     */
+    agentConversationsDenyCreate: (
+      id: string,
+      decision: ApiAgentApprovalRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiResponse, string>({
+        path: `/v1/agent/conversations/${id}/deny`,
+        method: "POST",
+        body: decision,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description The thumbs up/down ratings the account gave messages in a conversation
+     *
+     * @tags agent
+     * @name AgentConversationsFeedbackList
+     * @summary List message feedback
+     * @request GET:/v1/agent/conversations/{id}/feedback
+     * @secure
+     */
+    agentConversationsFeedbackList: (id: string, params: RequestParams = {}) =>
+      this.request<StructsAgentFeedback[], string>({
+        path: `/v1/agent/conversations/${id}/feedback`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Records a thumbs up or down on one assistant message (by its index in the stored transcript); rating the same message again replaces the earlier rating
+     *
+     * @tags agent
+     * @name AgentConversationsFeedbackCreate
+     * @summary Rate an assistant message
+     * @request POST:/v1/agent/conversations/{id}/feedback
+     * @secure
+     */
+    agentConversationsFeedbackCreate: (
+      id: string,
+      feedback: ApiAgentFeedbackRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsAgentFeedback, string>({
+        path: `/v1/agent/conversations/${id}/feedback`,
+        method: "POST",
+        body: feedback,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags agent
+     * @name AgentConversationsFeedbackDelete
+     * @summary Remove a message rating
+     * @request DELETE:/v1/agent/conversations/{id}/feedback/{index}
+     * @secure
+     */
+    agentConversationsFeedbackDelete: (
+      id: string,
+      index: number,
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiResponse, string>({
+        path: `/v1/agent/conversations/${id}/feedback/${index}`,
+        method: "DELETE",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Starts one turn and streams its events as server-sent events (text/event-stream): meta, text_delta, text, tool_call, tool_result, refused, usage, done. The turn keeps running if the client disconnects; re-attach with GET /v1/agent/conversations/{id}/stream. The prompt id is an idempotency key.
+     *
+     * @tags agent
+     * @name AgentConversationsMessagesCreate
+     * @summary Send a message to the agent
+     * @request POST:/v1/agent/conversations/{id}/messages
+     * @secure
+     */
+    agentConversationsMessagesCreate: (
+      id: string,
+      message: ApiAgentMessageRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<string, string | ApiAgentQuotaExceeded>({
+        path: `/v1/agent/conversations/${id}/messages`,
+        method: "POST",
+        body: message,
+        secure: true,
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * @description Cancels the current work and queues a replacement instruction on the same conversation
+     *
+     * @tags agent
+     * @name AgentConversationsSteerCreate
+     * @summary Steer the running agent turn
+     * @request POST:/v1/agent/conversations/{id}/steer
+     * @secure
+     */
+    agentConversationsSteerCreate: (
+      id: string,
+      control: ApiAgentControlRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiResponse, string>({
+        path: `/v1/agent/conversations/${id}/steer`,
+        method: "POST",
+        body: control,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Re-joins a turn already running on any replica as server-sent events: the events so far are replayed, then followed live. 404 when nothing is running (read the stored transcript instead).
+     *
+     * @tags agent
+     * @name AgentConversationsStreamList
+     * @summary Attach to a running agent turn
+     * @request GET:/v1/agent/conversations/{id}/stream
+     * @secure
+     */
+    agentConversationsStreamList: (id: string, params: RequestParams = {}) =>
+      this.request<string, string>({
+        path: `/v1/agent/conversations/${id}/stream`,
+        method: "GET",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Widens the conversation's grant by one harness scope (e.g. routing:drop after a refused delete). The approval is recorded on the conversation and applies to the running turn and every later one. Limited by the caller's role.
+     *
+     * @tags agent
+     * @name AgentConversationsWidenCreate
+     * @summary Approve a scope for the conversation
+     * @request POST:/v1/agent/conversations/{id}/widen
+     * @secure
+     */
+    agentConversationsWidenCreate: (
+      id: string,
+      control: ApiAgentControlRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiResponse, string>({
+        path: `/v1/agent/conversations/${id}/widen`,
+        method: "POST",
+        body: control,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Every account tool the agent can reach, the harness scope it needs, and whether the caller's grant permits it or could approve it
+     *
+     * @tags agent
+     * @name AgentToolsList
+     * @summary List agent tools
+     * @request GET:/v1/agent/tools
+     * @secure
+     */
+    agentToolsList: (params: RequestParams = {}) =>
+      this.request<ApiAgentToolsResponse, string>({
+        path: `/v1/agent/tools`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description List audit entries across the platform or scope them to one exact account. Platform admins bypass account-plan activity restrictions.
+     *
+     * @tags admin, audit
+     * @name AuditList
+     * @summary List audit entries (admin)
+     * @request GET:/v1/audit
+     * @secure
+     */
+    auditList: (
+      query?: {
+        /** Page size */
+        limit?: number;
+        /** Offset */
+        offset?: number;
+        /** Comma-separated resource kinds */
+        filter?: string;
+        /** Exact account ID */
+        account_id?: string;
+        /** Account email or ID (legacy filter) */
+        email?: string;
+        /** Filter by acting user's username */
+        username?: string;
+        /** Filter by action */
+        action?: string;
+        /** Filter by surface: mcp or agent */
+        source?: string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiAuditLogsResponse, StructsErrorResponse>({
+        path: `/v1/audit`,
+        method: "GET",
+        query: query,
         secure: true,
         type: ContentType.Json,
         format: "json",
@@ -2557,25 +5814,39 @@ export class Api<
       }),
 
     /**
-     * @description Stream new webhook deliveries since the last poll. Cursor-bound to the (account, bucket, output) tuple the first call established.
+     * @description Server-to-server endpoint the Cloudflare Email Worker posts raw RFC822 to. This handler resolves the recipient to an email-type service connection input, parses the message (pkg/email), enforces per-input policy (sender allowlist, attachment drop/cap), and pushes the resulting email.Message through the normal relay pipeline. Authenticated with the X-WHR-Secret shared secret, not a user token.
+     *
+     * @tags email
+     * @name EmailInboundCreate
+     * @summary Inbound email ingest (internal)
+     * @request POST:/v1/email-inbound
+     */
+    emailInboundCreate: (params: RequestParams = {}) =>
+      this.request<string, string>({
+        path: `/v1/email-inbound`,
+        method: "POST",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Pull-based delivery: returns the oldest unsent webhooks for the bucket and marks them delivered (RECEIVED → SENT), so each poll returns the next batch and drains to an empty page. Report a different outcome with PUT /v1/logs/{id}.
      *
      * @tags logs
      * @name EventsList
-     * @summary Poll webhook events (cursor-mode)
+     * @summary Consume webhook events (pull-delivery queue)
      * @request GET:/v1/events
      * @secure
      */
     eventsList: (
-      query?: {
-        /** Bucket ID (required on first call; cursor carries it on subsequent calls) */
-        bucket?: string;
+      query: {
+        /** Bucket ID or account-unique name */
+        bucket: string;
         /** Output ID filter */
         output?: string;
-        /** Opaque resume cursor from a previous call */
-        cursor?: string;
-        /** Page size (default 100) */
+        /** Page size (default 1, max 100) */
         limit?: number;
-        /** Lookback window on the first call (default 24h, Go duration syntax) */
+        /** How far back to look for unsent webhooks (default 24h, Go duration syntax) */
         max_age?: string;
       },
       params: RequestParams = {},
@@ -2599,10 +5870,72 @@ export class Api<
      * @request GET:/v1/exec-logs/{id}
      * @secure
      */
-    execLogsDetail: (id: string, params: RequestParams = {}) =>
+    execLogsDetail: (
+      id: string,
+      query?: {
+        /** Execution creation time (unix seconds/ms/us). Optional day hint that turns the lookup into a single index read; omit it and the log still resolves, just less cheaply. */
+        created_at?: number;
+      },
+      params: RequestParams = {},
+    ) =>
       this.request<StructsExecuteLog, string>({
         path: `/v1/exec-logs/${id}`,
         method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags functions
+     * @name FunctionReferenceList
+     * @summary Read the deployed Function API reference and executable examples
+     * @request GET:/v1/function-reference
+     * @secure
+     */
+    functionReferenceList: (
+      query: {
+        /** Runtime */
+        driver: "js" | "lua";
+        /** Module from the runtime catalog, or core */
+        module: string;
+        /** Curated helper method */
+        method?: string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<FunctiondocsReference, string>({
+        path: `/v1/function-reference`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags functions
+     * @name FunctionRuntimeList
+     * @summary Read the deployed Function runtime capabilities
+     * @request GET:/v1/function-runtime
+     * @secure
+     */
+    functionRuntimeList: (
+      query: {
+        /** Runtime */
+        driver: "js" | "lua";
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<FunctiondocsRuntime, string>({
+        path: `/v1/function-runtime`,
+        method: "GET",
+        query: query,
         secure: true,
         format: "json",
         ...params,
@@ -2802,6 +6135,70 @@ export class Api<
       }),
 
     /**
+     * No description
+     *
+     * @tags functions
+     * @name FunctionsConnectionsList
+     * @summary List Function connection requirements
+     * @request GET:/v1/functions/{id}/connections
+     * @secure
+     */
+    functionsConnectionsList: (id: string, params: RequestParams = {}) =>
+      this.request<StructsFunctionConnectionRequirement[], any>({
+        path: `/v1/functions/${id}/connections`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags functions
+     * @name FunctionsConnectionsDelete
+     * @summary Unbind a Function service connection import
+     * @request DELETE:/v1/functions/{id}/connections/{alias}
+     * @secure
+     */
+    functionsConnectionsDelete: (
+      id: string,
+      alias: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<void, any>({
+        path: `/v1/functions/${id}/connections/${alias}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags functions
+     * @name FunctionsConnectionsUpdate
+     * @summary Bind a Function service connection import
+     * @request PUT:/v1/functions/{id}/connections/{alias}
+     * @secure
+     */
+    functionsConnectionsUpdate: (
+      id: string,
+      alias: string,
+      binding: ApiBindFunctionConnectionRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsFunctionConnectionRequirement, any>({
+        path: `/v1/functions/${id}/connections/${alias}`,
+        method: "PUT",
+        body: binding,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Invoke a function by its ID
      *
      * @tags functions
@@ -2863,6 +6260,104 @@ export class Api<
       }),
 
     /**
+     * @description Revision history of a function, newest first, without code. A revision is recorded on create, on every code change, and on restore.
+     *
+     * @tags functions
+     * @name FunctionsVersionsList
+     * @summary List function versions
+     * @request GET:/v1/functions/{id}/versions
+     * @secure
+     */
+    functionsVersionsList: (id: string, params: RequestParams = {}) =>
+      this.request<StructsFunctionVersion[], string>({
+        path: `/v1/functions/${id}/versions`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description One revision of a function including its code
+     *
+     * @tags functions
+     * @name FunctionsVersionsDetail
+     * @summary Get function version
+     * @request GET:/v1/functions/{id}/versions/{version}
+     * @secure
+     */
+    functionsVersionsDetail: (
+      id: string,
+      version: number,
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsFunctionVersion, string>({
+        path: `/v1/functions/${id}/versions/${version}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Makes an earlier revision the current code. The restore is itself recorded as the newest revision, so history is never lost.
+     *
+     * @tags functions
+     * @name FunctionsVersionsRestoreCreate
+     * @summary Restore function version
+     * @request POST:/v1/functions/{id}/versions/{version}/restore
+     * @secure
+     */
+    functionsVersionsRestoreCreate: (
+      id: string,
+      version: number,
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsFunction, string>({
+        path: `/v1/functions/${id}/versions/${version}/restore`,
+        method: "POST",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns a dense per-UTC-day series of incidents that started in the inclusive [from, to] window, including count and resolved-incident duration totals for charting.
+     *
+     * @tags incidents
+     * @name IncidentsStatsList
+     * @summary Get incident statistics by day
+     * @request GET:/v1/incidents/stats
+     * @secure
+     */
+    incidentsStatsList: (
+      query?: {
+        /** From date (YYYY-MM-DD), defaults to 30 days ago */
+        from?: string;
+        /** To date (YYYY-MM-DD), defaults to today */
+        to?: string;
+        /** Filter by status (open|resolved) */
+        status?: string;
+        /** Filter by bucket ID */
+        bucket_id?: string;
+        /** Filter by output ID */
+        output_id?: string;
+        /** Filter by integration configuration ID */
+        integration_id?: string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsIncidentDayStats[], any>({
+        path: `/v1/incidents/stats`,
+        method: "GET",
+        query: query,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get paginated list of webhook logs from warehouse for the authenticated account
      *
      * @tags logs
@@ -2901,7 +6396,7 @@ export class Api<
       }),
 
     /**
-     * @description Get account log statistics
+     * @description Get daily account log counts, retry/latency aggregates, and Turbostore request/response byte totals (recorded bodies plus HTTP headers)
      *
      * @tags logs
      * @name LogsStatsList
@@ -2931,6 +6426,34 @@ export class Api<
       }),
 
     /**
+     * @description Per-bucket daily log statistics for the whole account. Returns success/failure/retry/latency series plus Turbostore request/response byte totals (recorded bodies plus HTTP headers) without fanning out one request per bucket.
+     *
+     * @tags logs
+     * @name LogsStatsByBucketList
+     * @summary Get per-bucket log statistics
+     * @request GET:/v1/logs-stats/by-bucket
+     * @secure
+     */
+    logsStatsByBucketList: (
+      query?: {
+        /** From date (YYYY-MM-DD) */
+        from?: string;
+        /** To date (YYYY-MM-DD) */
+        to?: string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsBucketLogsStats[], any>({
+        path: `/v1/logs-stats/by-bucket`,
+        method: "GET",
+        query: query,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get detailed information about a specific webhook log from warehouse
      *
      * @tags logs
@@ -2950,7 +6473,7 @@ export class Api<
       }),
 
     /**
-     * @description Update a webhook log. Can be used to update status, response body, headers and status code. Only modifiable within first 10 seconds.
+     * @description Update a webhook log. Can be used to update status, response body, headers and status code. Only modifiable within 2 minutes of receipt.
      *
      * @tags logs
      * @name LogsUpdate
@@ -3148,6 +6671,743 @@ export class Api<
       }),
 
     /**
+     * @description List invitations for the effective organization account, pending by default (?status=)
+     *
+     * @tags organizations
+     * @name OrgInvitesList
+     * @summary List organization invitations
+     * @request GET:/v1/org/invites
+     * @secure
+     */
+    orgInvitesList: (
+      query?: {
+        /** Invite status filter (pending/accepted/declined/revoked) */
+        status?: string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsOrganizationInvite[], any>({
+        path: `/v1/org/invites`,
+        method: "GET",
+        query: query,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Create a pending invitation for an email address. Invited members and sub-accounts share the plan's sub-account quota.
+     *
+     * @tags organizations
+     * @name OrgInvitesCreate
+     * @summary Invite an account into the organization
+     * @request POST:/v1/org/invites
+     * @secure
+     */
+    orgInvitesCreate: (
+      invite: ApiOrgInviteCreateRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsOrganizationInvite, any>({
+        path: `/v1/org/invites`,
+        method: "POST",
+        body: invite,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Revoke a pending invitation
+     *
+     * @tags organizations
+     * @name OrgInvitesDelete
+     * @summary Revoke organization invitation
+     * @request DELETE:/v1/org/invites/{id}
+     * @secure
+     */
+    orgInvitesDelete: (id: string, params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/v1/org/invites/${id}`,
+        method: "DELETE",
+        secure: true,
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * @description List members of the effective organization account, joined with member identity
+     *
+     * @tags organizations
+     * @name OrgMembersList
+     * @summary List organization members
+     * @request GET:/v1/org/members
+     * @secure
+     */
+    orgMembersList: (params: RequestParams = {}) =>
+      this.request<StructsOrganizationMemberDetails[], any>({
+        path: `/v1/org/members`,
+        method: "GET",
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Remove a member from the effective organization account
+     *
+     * @tags organizations
+     * @name OrgMembersDelete
+     * @summary Remove organization member
+     * @request DELETE:/v1/org/members/{id}
+     * @secure
+     */
+    orgMembersDelete: (id: string, params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/v1/org/members/${id}`,
+        method: "DELETE",
+        secure: true,
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * @description Change a member's role (admin/billing/member)
+     *
+     * @tags organizations
+     * @name OrgMembersUpdate
+     * @summary Update organization member role
+     * @request PUT:/v1/org/members/{id}
+     * @secure
+     */
+    orgMembersUpdate: (
+      id: string,
+      member: ApiOrgMemberUpdateRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsOrganizationMember, any>({
+        path: `/v1/org/members/${id}`,
+        method: "PUT",
+        body: member,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Removes the SAML SSO connection for the effective organization.
+     *
+     * @tags organizations
+     * @name OrgSsoDelete
+     * @summary Delete organization SAML SSO configuration
+     * @request DELETE:/v1/org/sso
+     * @secure
+     */
+    orgSsoDelete: (params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/v1/org/sso`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Returns the SAML SSO connection for the effective organization account, or null when none is configured.
+     *
+     * @tags organizations
+     * @name OrgSsoList
+     * @summary Get organization SAML SSO configuration
+     * @request GET:/v1/org/sso
+     * @secure
+     */
+    orgSsoList: (params: RequestParams = {}) =>
+      this.request<StructsSamlSsoOrg, any>({
+        path: `/v1/org/sso`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Creates a SAML SSO connection for the effective organization. Requires plan metadata saml_sso=true. Supports Okta and Microsoft Entra ID (Azure AD) style federation metadata URLs.
+     *
+     * @tags organizations
+     * @name OrgSsoCreate
+     * @summary Create organization SAML SSO configuration
+     * @request POST:/v1/org/sso
+     * @secure
+     */
+    orgSsoCreate: (body: ApiOrgSamlSSORequest, params: RequestParams = {}) =>
+      this.request<StructsSamlSsoOrg, any>({
+        path: `/v1/org/sso`,
+        method: "POST",
+        body: body,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Updates the SAML SSO connection for the effective organization.
+     *
+     * @tags organizations
+     * @name OrgSsoUpdate
+     * @summary Update organization SAML SSO configuration
+     * @request PUT:/v1/org/sso
+     * @secure
+     */
+    orgSsoUpdate: (body: ApiOrgSamlSSORequest, params: RequestParams = {}) =>
+      this.request<StructsSamlSsoOrg, any>({
+        path: `/v1/org/sso`,
+        method: "PUT",
+        body: body,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Lists the producer's customers that receive outbound webhooks. Pilot: requires the outbound feature flag.
+     *
+     * @tags outbound
+     * @name OutboundConsumersList
+     * @summary List outbound consumers
+     * @request GET:/v1/outbound/consumers
+     * @secure
+     */
+    outboundConsumersList: (params: RequestParams = {}) =>
+      this.request<StructsOutboundConsumer[], ApiOutboundErrorResponse>({
+        path: `/v1/outbound/consumers`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Newest first. Signing secrets are not included.
+     *
+     * @tags outbound
+     * @name OutboundConsumersEndpointsList
+     * @summary List a consumer's outbound endpoints
+     * @request GET:/v1/outbound/consumers/{consumer}/endpoints
+     * @secure
+     */
+    outboundConsumersEndpointsList: (
+      consumer: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsOutboundEndpoint[], ApiOutboundErrorResponse>({
+        path: `/v1/outbound/consumers/${consumer}/endpoints`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Adds a destination to a consumer. The response includes the endpoint's signing secret.
+     *
+     * @tags outbound
+     * @name OutboundConsumersEndpointsCreate
+     * @summary Create an outbound endpoint
+     * @request POST:/v1/outbound/consumers/{consumer}/endpoints
+     * @secure
+     */
+    outboundConsumersEndpointsCreate: (
+      consumer: string,
+      endpoint: StructsOutboundEndpoint,
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiEndpointWithSecret, ApiOutboundErrorResponse>({
+        path: `/v1/outbound/consumers/${consumer}/endpoints`,
+        method: "POST",
+        body: endpoint,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Deletes the consumer and its endpoints. Delivery history is kept.
+     *
+     * @tags outbound
+     * @name OutboundConsumersDelete
+     * @summary Delete an outbound consumer
+     * @request DELETE:/v1/outbound/consumers/{id}
+     * @secure
+     */
+    outboundConsumersDelete: (id: string, params: RequestParams = {}) =>
+      this.request<ApiDeletedResponse, ApiOutboundErrorResponse>({
+        path: `/v1/outbound/consumers/${id}`,
+        method: "DELETE",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags outbound
+     * @name OutboundConsumersDetail
+     * @summary Get an outbound consumer
+     * @request GET:/v1/outbound/consumers/{id}
+     * @secure
+     */
+    outboundConsumersDetail: (id: string, params: RequestParams = {}) =>
+      this.request<StructsOutboundConsumer, ApiOutboundErrorResponse>({
+        path: `/v1/outbound/consumers/${id}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Consumer IDs are chosen by the producer. Only name and rate are updated; a deleted consumer's ID cannot be reused.
+     *
+     * @tags outbound
+     * @name OutboundConsumersUpdate
+     * @summary Create or update an outbound consumer
+     * @request PUT:/v1/outbound/consumers/{id}
+     * @secure
+     */
+    outboundConsumersUpdate: (
+      id: string,
+      consumer: StructsOutboundConsumer,
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsOutboundConsumer, ApiOutboundErrorResponse>({
+        path: `/v1/outbound/consumers/${id}`,
+        method: "PUT",
+        body: consumer,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Delivery history is kept.
+     *
+     * @tags outbound
+     * @name OutboundEndpointsDelete
+     * @summary Delete an outbound endpoint
+     * @request DELETE:/v1/outbound/endpoints/{id}
+     * @secure
+     */
+    outboundEndpointsDelete: (id: string, params: RequestParams = {}) =>
+      this.request<ApiDeletedResponse, ApiOutboundErrorResponse>({
+        path: `/v1/outbound/endpoints/${id}`,
+        method: "DELETE",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags outbound
+     * @name OutboundEndpointsDetail
+     * @summary Get an outbound endpoint
+     * @request GET:/v1/outbound/endpoints/{id}
+     * @secure
+     */
+    outboundEndpointsDetail: (id: string, params: RequestParams = {}) =>
+      this.request<StructsOutboundEndpoint, ApiOutboundErrorResponse>({
+        path: `/v1/outbound/endpoints/${id}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Replaces the endpoint's configuration. Its state, health and signing secrets are kept.
+     *
+     * @tags outbound
+     * @name OutboundEndpointsUpdate
+     * @summary Update an outbound endpoint
+     * @request PUT:/v1/outbound/endpoints/{id}
+     * @secure
+     */
+    outboundEndpointsUpdate: (
+      id: string,
+      endpoint: StructsOutboundEndpoint,
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsOutboundEndpoint, ApiOutboundErrorResponse>({
+        path: `/v1/outbound/endpoints/${id}`,
+        method: "PUT",
+        body: endpoint,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Newest first, with their delivery attempts, within the 35-day history.
+     *
+     * @tags outbound
+     * @name OutboundEndpointsDeliveriesList
+     * @summary List an outbound endpoint's deliveries
+     * @request GET:/v1/outbound/endpoints/{id}/deliveries
+     * @secure
+     */
+    outboundEndpointsDeliveriesList: (
+      id: string,
+      query?: {
+        /** Page size, at most 100 */
+        limit?: number;
+        /** Page offset */
+        offset?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsLog[], ApiOutboundErrorResponse>({
+        path: `/v1/outbound/endpoints/${id}/deliveries`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Messages published while paused are recorded as skipped; replay them with replay-missing after resuming.
+     *
+     * @tags outbound
+     * @name OutboundEndpointsPauseCreate
+     * @summary Pause an outbound endpoint
+     * @request POST:/v1/outbound/endpoints/{id}/pause
+     * @secure
+     */
+    outboundEndpointsPauseCreate: (id: string, params: RequestParams = {}) =>
+      this.request<StructsOutboundEndpoint, ApiOutboundErrorResponse>({
+        path: `/v1/outbound/endpoints/${id}/pause`,
+        method: "POST",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Re-sends the endpoint's deliveries that exhausted their retries since the given time, in the background.
+     *
+     * @tags outbound
+     * @name OutboundEndpointsRecoverCreate
+     * @summary Recover failed outbound deliveries
+     * @request POST:/v1/outbound/endpoints/{id}/recover
+     * @secure
+     */
+    outboundEndpointsRecoverCreate: (
+      id: string,
+      recovery: ApiOutboundRecoveryBody,
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsOutboundRecoveryTask, ApiOutboundErrorResponse>({
+        path: `/v1/outbound/endpoints/${id}/recover`,
+        method: "POST",
+        body: recovery,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Sends the deliveries skipped while the endpoint was paused or disabled, in the background. Resume the endpoint first.
+     *
+     * @tags outbound
+     * @name OutboundEndpointsReplayMissingCreate
+     * @summary Replay skipped outbound deliveries
+     * @request POST:/v1/outbound/endpoints/{id}/replay-missing
+     * @secure
+     */
+    outboundEndpointsReplayMissingCreate: (
+      id: string,
+      recovery: ApiOutboundRecoveryBody,
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsOutboundRecoveryTask, ApiOutboundErrorResponse>({
+        path: `/v1/outbound/endpoints/${id}/replay-missing`,
+        method: "POST",
+        body: recovery,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Restarts deliveries and resets the endpoint's failure count.
+     *
+     * @tags outbound
+     * @name OutboundEndpointsResumeCreate
+     * @summary Resume an outbound endpoint
+     * @request POST:/v1/outbound/endpoints/{id}/resume
+     * @secure
+     */
+    outboundEndpointsResumeCreate: (id: string, params: RequestParams = {}) =>
+      this.request<StructsOutboundEndpoint, ApiOutboundErrorResponse>({
+        path: `/v1/outbound/endpoints/${id}/resume`,
+        method: "POST",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Re-sends message_id to the endpoint in the background and returns the recovery task.
+     *
+     * @tags outbound
+     * @name OutboundEndpointsRetryCreate
+     * @summary Retry one outbound delivery
+     * @request POST:/v1/outbound/endpoints/{id}/retry
+     * @secure
+     */
+    outboundEndpointsRetryCreate: (
+      id: string,
+      recovery: ApiOutboundRecoveryBody,
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsOutboundRecoveryTask, ApiOutboundErrorResponse>({
+        path: `/v1/outbound/endpoints/${id}/retry`,
+        method: "POST",
+        body: recovery,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags outbound
+     * @name OutboundEndpointsSecretRevealCreate
+     * @summary Reveal an outbound endpoint's signing secret
+     * @request POST:/v1/outbound/endpoints/{id}/secret/reveal
+     * @secure
+     */
+    outboundEndpointsSecretRevealCreate: (
+      id: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiSecretResponse, ApiOutboundErrorResponse>({
+        path: `/v1/outbound/endpoints/${id}/secret/reveal`,
+        method: "POST",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns the new secret. The previous secret keeps signing for 24 hours; another rotation is refused until then.
+     *
+     * @tags outbound
+     * @name OutboundEndpointsSecretRotateCreate
+     * @summary Rotate an outbound endpoint's signing secret
+     * @request POST:/v1/outbound/endpoints/{id}/secret/rotate
+     * @secure
+     */
+    outboundEndpointsSecretRotateCreate: (
+      id: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<ApiSecretResponse, ApiOutboundErrorResponse>({
+        path: `/v1/outbound/endpoints/${id}/secret/rotate`,
+        method: "POST",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Lists the producer's event catalog.
+     *
+     * @tags outbound
+     * @name OutboundEventTypesList
+     * @summary List outbound event types
+     * @request GET:/v1/outbound/event-types
+     * @secure
+     */
+    outboundEventTypesList: (params: RequestParams = {}) =>
+      this.request<StructsOutboundEventType[], ApiOutboundErrorResponse>({
+        path: `/v1/outbound/event-types`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags outbound
+     * @name OutboundEventTypesCreate
+     * @summary Create or update an outbound event type
+     * @request POST:/v1/outbound/event-types
+     * @secure
+     */
+    outboundEventTypesCreate: (
+      eventType: StructsOutboundEventType,
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsOutboundEventType, ApiOutboundErrorResponse>({
+        path: `/v1/outbound/event-types`,
+        method: "POST",
+        body: eventType,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Refused while an endpoint subscribes to the event type by name.
+     *
+     * @tags outbound
+     * @name OutboundEventTypesDelete
+     * @summary Delete an outbound event type
+     * @request DELETE:/v1/outbound/event-types/{name}
+     * @secure
+     */
+    outboundEventTypesDelete: (name: string, params: RequestParams = {}) =>
+      this.request<ApiDeletedResponse, ApiOutboundErrorResponse>({
+        path: `/v1/outbound/event-types/${name}`,
+        method: "DELETE",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description The name in the path wins over a name in the body.
+     *
+     * @tags outbound
+     * @name OutboundEventTypesUpdate
+     * @summary Create or update an outbound event type
+     * @request PUT:/v1/outbound/event-types/{name}
+     * @secure
+     */
+    outboundEventTypesUpdate: (
+      name: string,
+      eventType: StructsOutboundEventType,
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsOutboundEventType, ApiOutboundErrorResponse>({
+        path: `/v1/outbound/event-types/${name}`,
+        method: "PUT",
+        body: eventType,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Newest first, without payloads.
+     *
+     * @tags outbound
+     * @name OutboundMessagesList
+     * @summary List outbound messages
+     * @request GET:/v1/outbound/messages
+     * @secure
+     */
+    outboundMessagesList: (
+      query?: {
+        /** Consumer ID */
+        consumer?: string;
+        /** Event type */
+        event_type?: string;
+        /** Page size, at most 100 */
+        limit?: number;
+        /** Page offset */
+        offset?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsOutboundMessage[], ApiOutboundErrorResponse>({
+        path: `/v1/outbound/messages`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Accepts a message for signed, asynchronous delivery to every endpoint of the consumer subscribed to its event type. Reusing an Idempotency-Key with the same message returns the original receipt.
+     *
+     * @tags outbound
+     * @name OutboundMessagesCreate
+     * @summary Publish an outbound message
+     * @request POST:/v1/outbound/messages
+     * @secure
+     */
+    outboundMessagesCreate: (
+      message: StructsPublishOutboundMessageRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsOutboundMessage, ApiOutboundErrorResponse>({
+        path: `/v1/outbound/messages`,
+        method: "POST",
+        body: message,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns the payload and each endpoint's delivery with its attempts. Recently accepted messages may still be preparing.
+     *
+     * @tags outbound
+     * @name OutboundMessagesDetail
+     * @summary Get an outbound message
+     * @request GET:/v1/outbound/messages/{id}
+     * @secure
+     */
+    outboundMessagesDetail: (id: string, params: RequestParams = {}) =>
+      this.request<ApiOutboundMessageDetail, ApiOutboundErrorResponse>({
+        path: `/v1/outbound/messages/${id}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags outbound
+     * @name OutboundRecoveryTasksDetail
+     * @summary Get an outbound recovery task
+     * @request GET:/v1/outbound/recovery-tasks/{id}
+     * @secure
+     */
+    outboundRecoveryTasksDetail: (id: string, params: RequestParams = {}) =>
+      this.request<StructsOutboundRecoveryTask, ApiOutboundErrorResponse>({
+        path: `/v1/outbound/recovery-tasks/${id}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Returns optional add-on items (like extra webhooks) available for each plan
      *
      * @tags billing
@@ -3162,6 +7422,113 @@ export class Api<
         method: "GET",
         secure: true,
         type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Re-delivers a stored webhook log to its endpoint and updates that log in place. Relies on turbostore v2.
+     *
+     * @tags retry
+     * @name RetryMessagesCreate
+     * @summary Retry a single webhook message
+     * @request POST:/v1/retry/messages/{id}
+     * @secure
+     */
+    retryMessagesCreate: (id: string, params: RequestParams = {}) =>
+      this.request<ApiResponse, string>({
+        path: `/v1/retry/messages/${id}`,
+        method: "POST",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Re-delivers every failed webhook log in a bucket within the given window. Returns a task that can be polled for progress.
+     *
+     * @tags retry
+     * @name RetryRecoverCreate
+     * @summary Recover failed webhook messages
+     * @request POST:/v1/retry/recover
+     * @secure
+     */
+    retryRecoverCreate: (
+      body: ApiRetryBulkRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsRetryTask, string>({
+        path: `/v1/retry/recover`,
+        method: "POST",
+        body: body,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Re-delivers webhook logs that were persisted but never attempted against their output within the given window. Returns a task that can be polled for progress.
+     *
+     * @tags retry
+     * @name RetryReplayMissingCreate
+     * @summary Replay never-attempted webhook messages
+     * @request POST:/v1/retry/replay-missing
+     * @secure
+     */
+    retryReplayMissingCreate: (
+      body: ApiRetryBulkRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsRetryTask, string>({
+        path: `/v1/retry/replay-missing`,
+        method: "POST",
+        body: body,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags retry
+     * @name RetryTasksList
+     * @summary List retry tasks
+     * @request GET:/v1/retry/tasks
+     * @secure
+     */
+    retryTasksList: (
+      query?: {
+        /** Filter by bucket ID */
+        bucket?: string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsRetryTask[], any>({
+        path: `/v1/retry/tasks`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags retry
+     * @name RetryTasksDetail
+     * @summary Get a retry task
+     * @request GET:/v1/retry/tasks/{id}
+     * @secure
+     */
+    retryTasksDetail: (id: string, params: RequestParams = {}) =>
+      this.request<StructsRetryTask, string>({
+        path: `/v1/retry/tasks/${id}`,
+        method: "GET",
+        secure: true,
         format: "json",
         ...params,
       }),
@@ -3186,7 +7553,7 @@ export class Api<
       }),
 
     /**
-     * @description Create a new service connection
+     * @description Create a credentialed service connection. Webhook Relay AI is built in and is imported by Functions with require("ai") without a service connection.
      *
      * @tags service-connections
      * @name ServiceConnectionsCreate
@@ -3633,6 +8000,99 @@ export class Api<
         secure: true,
         type: ContentType.Json,
         format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description List pending, unexpired invitations addressed to the authenticated account's email
+     *
+     * @tags organizations
+     * @name UserInvitationsList
+     * @summary List my pending invitations
+     * @request GET:/v1/user/invitations
+     * @secure
+     */
+    userInvitationsList: (params: RequestParams = {}) =>
+      this.request<StructsOrganizationInviteDetails[], any>({
+        path: `/v1/user/invitations`,
+        method: "GET",
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Accept a pending invitation addressed to the authenticated account's email. Requires a verified email.
+     *
+     * @tags organizations
+     * @name UserInvitationsAcceptCreate
+     * @summary Accept an invitation
+     * @request POST:/v1/user/invitations/{id}/accept
+     * @secure
+     */
+    userInvitationsAcceptCreate: (id: string, params: RequestParams = {}) =>
+      this.request<StructsOrganizationMember, any>({
+        path: `/v1/user/invitations/${id}/accept`,
+        method: "POST",
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Decline a pending invitation addressed to the authenticated account's email
+     *
+     * @tags organizations
+     * @name UserInvitationsDeclineCreate
+     * @summary Decline an invitation
+     * @request POST:/v1/user/invitations/{id}/decline
+     * @secure
+     */
+    userInvitationsDeclineCreate: (id: string, params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/v1/user/invitations/${id}/decline`,
+        method: "POST",
+        secure: true,
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * @description List organizations the authenticated account belongs to. Always actor-scoped: the org override never applies to /v1/user/ routes.
+     *
+     * @tags organizations
+     * @name UserMembershipsList
+     * @summary List my organization memberships
+     * @request GET:/v1/user/memberships
+     * @secure
+     */
+    userMembershipsList: (params: RequestParams = {}) =>
+      this.request<StructsOrganizationMembershipDetails[], any>({
+        path: `/v1/user/memberships`,
+        method: "GET",
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Remove the authenticated account's own membership. The path ID is the organization account ID.
+     *
+     * @tags organizations
+     * @name UserMembershipsDelete
+     * @summary Leave an organization
+     * @request DELETE:/v1/user/memberships/{id}
+     * @secure
+     */
+    userMembershipsDelete: (id: string, params: RequestParams = {}) =>
+      this.request<void, any>({
+        path: `/v1/user/memberships/${id}`,
+        method: "DELETE",
+        secure: true,
+        type: ContentType.Json,
         ...params,
       }),
   };

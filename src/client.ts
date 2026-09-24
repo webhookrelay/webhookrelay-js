@@ -6,6 +6,7 @@ import { OutputsResource } from "./resources/outputs.js";
 import { ServiceConnectionsResource } from "./resources/serviceConnections.js";
 import { FunctionsResource } from "./resources/functions.js";
 import { WebhooksResource } from "./resources/webhooks.js";
+import { OutboundResource } from "./resources/outbound.js";
 
 /**
  * The Webhook Relay API client.
@@ -41,6 +42,8 @@ export class WebhookRelay {
   readonly functions: FunctionsResource;
   /** Read webhook history, poll, and subscribe over WebSocket. */
   readonly webhooks: WebhooksResource;
+  /** Send signed webhooks to your own customers (pilot). */
+  readonly outbound: OutboundResource;
 
   constructor(config: WebhookRelayConfig = {}) {
     const resolved = resolveConfig(config);
@@ -51,6 +54,7 @@ export class WebhookRelay {
     this.serviceConnections = new ServiceConnectionsResource(this.http);
     this.functions = new FunctionsResource(this.http);
     this.webhooks = new WebhooksResource(this.http, resolved);
+    this.outbound = new OutboundResource(this.http);
   }
 
   /**

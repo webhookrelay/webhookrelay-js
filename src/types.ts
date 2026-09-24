@@ -444,3 +444,176 @@ export interface WebhookLogsPage {
   next_cursor?: string;
   truncated?: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// Outbound webhooks (pilot): send signed webhooks to your own customers
+// ---------------------------------------------------------------------------
+
+/** One of your customers. You choose its ID, for example your own customer ID. */
+export interface OutboundConsumer {
+  id: string;
+  name: string;
+  /** Default deliveries per second for the consumer's endpoints; 0 means 50. */
+  rate: number;
+  /** RFC3339 timestamp. */
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface UpsertOutboundConsumerParams {
+  name?: string;
+  rate?: number;
+}
+
+/** An entry in your event catalog, such as `invoice.paid`. */
+export interface OutboundEventType {
+  name: string;
+  description?: string;
+  example?: unknown;
+  /** Deprecated event types cannot be published. */
+  deprecated?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface UpsertOutboundEventTypeParams {
+  description?: string;
+  example?: unknown;
+  deprecated?: boolean;
+}
+
+export type OutboundEndpointState = "active" | "failing" | "paused" | "disabled";
+
+/** A consumer's HTTPS destination. */
+export interface OutboundEndpoint {
+  id: string;
+  consumer: string;
+  url: string;
+  description?: string;
+  event_types: string[];
+  headers?: Record<string, string>;
+  rate: number;
+  /** Seconds per delivery attempt; 0 means 15. */
+  timeout: number;
+  function_id?: string;
+  auto_disable: boolean;
+  state: OutboundEndpointState;
+  consecutive_failures?: number;
+  failing_since?: string;
+  /** When the secret replaced by the last rotation stops signing deliveries. */
+  previous_secret_expires_at?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/** A new endpoint with its signing secret, returned only on creation. */
+export interface OutboundEndpointWithSecret extends OutboundEndpoint {
+  secret: string;
+}
+
+export interface OutboundEndpointParams {
+  /** Public HTTPS URL. */
+  url: string;
+  /** Event types to deliver, or `["*"]` for all. */
+  event_types?: string[];
+  eventTypes?: string[];
+  description?: string;
+  headers?: Record<string, string>;
+  /** Deliveries per second; 0 uses the consumer's rate. */
+  rate?: number;
+  /** Seconds per attempt, up to 60; 0 means 15. */
+  timeout?: number;
+  /** Disable after 100 consecutive failed deliveries over at least 12 hours. */
+  auto_disable?: boolean;
+  autoDisable?: boolean;
+  /** Function that may rewrite the JSON body or drop the message. */
+  function_id?: string;
+  functionId?: string;
+}
+
+export interface PublishOutboundMessageParams {
+  consumer: string;
+  event_type?: string;
+  eventType?: string;
+  /** Your own event ID, delivered with the message. */
+  event_id?: string;
+  eventId?: string;
+  /** Any JSON value, up to 256 KiB. */
+  payload: unknown;
+}
+
+export interface PublishOutboundMessageOptions {
+  /**
+   * Makes publishing safe to retry: repeating a publish with the same key and
+   * message returns the original message instead of publishing again.
+   */
+  idempotencyKey?: string;
+}
+
+/** An outbound delivery attempt. */
+export interface OutboundDeliveryAttempt {
+  attempt_no: number;
+  started_at?: string;
+  finished_at?: string;
+  duration_ms?: number;
+  status_code?: number;
+  outcome?: string;
+  error?: string;
+  response_body?: string;
+}
+
+/** A message's delivery to one endpoint. `output_id` is the endpoint ID. */
+export interface OutboundDelivery extends WebhookLog {
+  message_id?: string;
+  consumer_id?: string;
+  event_type?: string;
+  attempts?: OutboundDeliveryAttempt[];
+}
+
+/** An accepted message. */
+export interface OutboundMessage {
+  id: string;
+  consumer: string;
+  event_type: string;
+  event_id?: string;
+  payload?: unknown;
+  endpoint_ids: string[];
+  created_at?: string;
+  /** When deliveries were queued; absent while the message is still preparing. */
+  enqueued_at?: string;
+  /** Set by `messages.get`: one delivery per addressed endpoint. */
+  deliveries?: OutboundDelivery[];
+}
+
+export interface ListOutboundMessagesParams {
+  consumer?: string;
+  event_type?: string;
+  eventType?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface ListOutboundDeliveriesParams {
+  limit?: number;
+  offset?: number;
+}
+
+export interface OutboundRecoveryParams {
+  /** RFC3339 start of the window; defaults to 24 hours ago. */
+  since?: string;
+}
+
+/** Progress of a background re-send. */
+export interface OutboundRecoveryTask {
+  id: string;
+  endpoint_id: string;
+  message_id?: string;
+  kind: "retry" | "recover" | "replay-missing";
+  status: "pending" | "running" | "completed" | "failed";
+  since?: string;
+  until?: string;
+  processed: number;
+  error?: string;
+  created_at?: string;
+  updated_at?: string;
+}

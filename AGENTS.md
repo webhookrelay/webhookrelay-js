@@ -28,7 +28,8 @@ browser.
   swagger consumed here. When an endpoint's behavior is unclear, read the Go
   handler rather than guessing.
 - **Generated low-level client:** [`src/generated/api.ts`](./src/generated/api.ts)
-  — auto-generated from the swagger by `make openapi` (swagger-typescript-api),
+  — auto-generated from the swagger by `make openapi` (runs `npm run openapi`,
+  swagger-typescript-api),
   post-processed with `@ts-nocheck`. Exposed to users as
   `@webhookrelay/sdk/generated`. Do not hand-edit; it is regenerated.
 
@@ -54,13 +55,14 @@ src/
   params.ts           camelCase → snake_case param normalization.
   resources/          One class per resource, hung off the client:
     buckets.ts inputs.ts outputs.ts serviceConnections.ts functions.ts webhooks.ts
+    outbound.ts       relay.outbound.* — consumers, event types, endpoints, messages
   streaming/
     poller.ts         WebhookPoller — async-iterable pull delivery over /v1/events.
     socket.ts         WebhookSubscription — real-time push over /v1/socket.
     websocket.ts      Isomorphic WebSocket resolver + URL helper.
   generated/api.ts    Generated low-level client (do not edit).
 test/                 Vitest suite (mock fetch + fake WebSocket; no network).
-examples/             Runnable usage examples.
+examples/             Runnable usage examples (outbound.ts is also run by the tests).
 swagger/swagger.yaml  OpenAPI spec (input to `make openapi`).
 scripts/              Build/codegen helpers (postprocess-generated.mjs).
 ```
