@@ -559,6 +559,7 @@ export interface OutboundDeliveryAttempt {
   status_code?: number;
   outcome?: string;
   error?: string;
+  /** The endpoint's response body, base64-encoded. */
   response_body?: string;
 }
 
@@ -583,6 +584,11 @@ export interface OutboundMessage {
   enqueued_at?: string;
   /** Set by `messages.get`: one delivery per addressed endpoint. */
   deliveries?: OutboundDelivery[];
+  /**
+   * Set by `messages.get` when some deliveries could not be read in time;
+   * ask again later for those endpoints.
+   */
+  unavailable_endpoint_ids?: string[];
 }
 
 export interface ListOutboundMessagesParams {

@@ -84,6 +84,7 @@ works when one of these is set:
 | --- | --- |
 | `RELAY_API_KEY` | Account API key (`sk-...`) |
 | `RELAY_KEY` + `RELAY_SECRET` | Classic access token pair |
+| `RELAY_BASE_URL` | API address, when not `https://my.webhookrelay.com` (self-hosted or local development) |
 
 Other options: `baseUrl`, `timeoutMs`, `fetch`, `headers`, `userAgent`.
 
