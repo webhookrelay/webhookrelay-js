@@ -907,6 +907,16 @@ export interface ApiOrgSamlSSORequest {
   signature_method?: string;
 }
 
+export interface ApiOutboundAccess {
+  enabled?: boolean;
+  request?: ApiOutboundAccessRequest;
+}
+
+export interface ApiOutboundAccessRequest {
+  requested_at?: string;
+  ticket_id?: string;
+}
+
 export interface ApiOutboundErrorResponse {
   error?: string;
 }
@@ -921,6 +931,11 @@ export interface ApiOutboundMessageDetail {
   event_type?: string;
   id?: string;
   payload?: object;
+  /**
+   * UnavailableEndpointIDs lists the endpoints whose delivery could not be
+   * read in time; the message detail is otherwise complete.
+   */
+  unavailable_endpoint_ids?: string[];
 }
 
 export interface ApiOutboundRecoveryBody {
@@ -6874,6 +6889,42 @@ export class Api<
       }),
 
     /**
+     * @description Outbound webhooks are a pilot. Reports whether they are enabled for the account and, while they are not, the open request to enable them.
+     *
+     * @tags outbound
+     * @name OutboundAccessList
+     * @summary Get outbound webhooks access
+     * @request GET:/v1/outbound/access
+     * @secure
+     */
+    outboundAccessList: (params: RequestParams = {}) =>
+      this.request<ApiOutboundAccess, ApiOutboundErrorResponse>({
+        path: `/v1/outbound/access`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Asks support to enable outbound webhooks by opening a support ticket. Asking again while that ticket is open returns it instead of opening another; nothing is opened when outbound webhooks are already enabled.
+     *
+     * @tags outbound
+     * @name OutboundAccessRequestCreate
+     * @summary Request outbound webhooks
+     * @request POST:/v1/outbound/access/request
+     * @secure
+     */
+    outboundAccessRequestCreate: (params: RequestParams = {}) =>
+      this.request<ApiOutboundAccess, ApiOutboundErrorResponse>({
+        path: `/v1/outbound/access/request`,
+        method: "POST",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Lists the producer's customers that receive outbound webhooks. Pilot: requires the outbound feature flag.
      *
      * @tags outbound
@@ -7072,6 +7123,12 @@ export class Api<
         limit?: number;
         /** Page offset */
         offset?: number;
+        /** Only deliveries in this status */
+        status?: "sent" | "failed" | "stalled" | "received" | "rejected";
+        /** Only deliveries of this event type */
+        event_type?: string;
+        /** Only the delivery of this message */
+        message_id?: string;
       },
       params: RequestParams = {},
     ) =>
@@ -7169,7 +7226,7 @@ export class Api<
       }),
 
     /**
-     * @description Re-sends message_id to the endpoint in the background and returns the recovery task.
+     * @description Re-sends message_id to the endpoint in the background and returns the recovery task. A delivery waiting for its next scheduled retry is re-sent now; one whose first attempt is still queued is refused.
      *
      * @tags outbound
      * @name OutboundEndpointsRetryCreate
@@ -7349,7 +7406,7 @@ export class Api<
       }),
 
     /**
-     * @description Accepts a message for signed, asynchronous delivery to every endpoint of the consumer subscribed to its event type. Reusing an Idempotency-Key with the same message returns the original receipt.
+     * @description Accepts a message for signed, asynchronous delivery to every endpoint of the consumer subscribed to its event type. An event type not yet in the catalog is added on first publish; deprecated event types are rejected. Reusing an Idempotency-Key with the same message returns the original receipt.
      *
      * @tags outbound
      * @name OutboundMessagesCreate

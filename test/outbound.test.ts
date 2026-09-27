@@ -100,6 +100,7 @@ describe("outbound", () => {
     );
 
     const deliveries = await relay.outbound.endpoints.deliveries("endpoint-1", { limit: 5 });
+    await relay.outbound.endpoints.deliveries("endpoint-1", { status: "failed", event_type: "invoice.paid" });
     await relay.outbound.endpoints.retry("endpoint-1", "message-1");
     await relay.outbound.endpoints.recover("endpoint-1", { since: "2026-09-01T00:00:00Z" });
     await relay.outbound.endpoints.replayMissing("endpoint-1");
@@ -108,13 +109,14 @@ describe("outbound", () => {
     expect(deliveries[0]?.message_id).toBe("message-1");
     expect(requests(calls)).toEqual([
       "GET /v1/outbound/endpoints/endpoint-1/deliveries?limit=5",
+      "GET /v1/outbound/endpoints/endpoint-1/deliveries?status=failed&event_type=invoice.paid",
       "POST /v1/outbound/endpoints/endpoint-1/retry",
       "POST /v1/outbound/endpoints/endpoint-1/recover",
       "POST /v1/outbound/endpoints/endpoint-1/replay-missing",
       "GET /v1/outbound/recovery-tasks/task-1",
     ]);
-    expect(calls[1]?.body).toEqual({ message_id: "message-1" });
-    expect(calls[2]?.body).toEqual({ since: "2026-09-01T00:00:00Z" });
+    expect(calls[2]?.body).toEqual({ message_id: "message-1" });
+    expect(calls[3]?.body).toEqual({ since: "2026-09-01T00:00:00Z" });
   });
 
   it("runs the example that the dashboard shows", async () => {

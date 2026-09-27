@@ -602,6 +602,12 @@ export interface ListOutboundMessagesParams {
 export interface ListOutboundDeliveriesParams {
   limit?: number;
   offset?: number;
+  /** Only deliveries in this status. `stalled` means a retry is scheduled. */
+  status?: "sent" | "failed" | "stalled" | "received" | "rejected";
+  /** Only deliveries of this event type. */
+  event_type?: string;
+  /** Only the delivery of this message. */
+  message_id?: string;
 }
 
 export interface OutboundRecoveryParams {
