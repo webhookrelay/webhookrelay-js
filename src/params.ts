@@ -46,6 +46,17 @@ const functionAliases: Record<string, string> = {
   outputPayload: "output_payload",
 };
 
+const outboundEndpointAliases: Record<string, string> = {
+  eventTypes: "event_types",
+  autoDisable: "auto_disable",
+  functionId: "function_id",
+};
+
+const outboundMessageAliases: Record<string, string> = {
+  eventType: "event_type",
+  eventId: "event_id",
+};
+
 export function inputParams<T extends object>(params: T): T {
   return applyAliases(params, inputAliases) as T;
 }
@@ -64,6 +75,14 @@ export function managedServiceParams<T extends object>(params: T): T {
 
 export function functionParams<T extends object>(params: T): T {
   return applyAliases(params, functionAliases) as T;
+}
+
+export function outboundEndpointParams<T extends object>(params: T): T {
+  return applyAliases(params, outboundEndpointAliases) as T;
+}
+
+export function outboundMessageParams<T extends object>(params: T): T {
+  return applyAliases(params, outboundMessageAliases) as T;
 }
 
 function applyAliases(params: object, aliases: Record<string, string>): Params {

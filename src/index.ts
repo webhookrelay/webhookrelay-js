@@ -47,6 +47,14 @@ export { OutputsResource } from "./resources/outputs.js";
 export { ServiceConnectionsResource } from "./resources/serviceConnections.js";
 export { FunctionsResource } from "./resources/functions.js";
 export { WebhooksResource } from "./resources/webhooks.js";
+export {
+  OutboundResource,
+  OutboundConsumersResource,
+  OutboundEventTypesResource,
+  OutboundEndpointsResource,
+  OutboundMessagesResource,
+  OutboundRecoveryTasksResource,
+} from "./resources/outbound.js";
 
 // Streaming
 export { WebhookPoller, type PollOptions } from "./streaming/poller.js";

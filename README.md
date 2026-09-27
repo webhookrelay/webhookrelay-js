@@ -209,6 +209,37 @@ await relay.serviceConnections.listOutputs(bucket.id);
 await relay.serviceConnections.list();
 ```
 
+## Outbound webhooks — send webhooks to your customers
+
+Register each customer as a consumer with the HTTPS endpoint they give you, then
+publish events. Webhook Relay signs every delivery
+([Standard Webhooks](https://www.standardwebhooks.com/)), retries failures durably
+for up to 48 hours and keeps the delivery history. Outbound webhooks are in pilot:
+the account needs the `outbound` feature.
+
+```ts
+// Once per customer.
+await relay.outbound.eventTypes.upsert("invoice.paid", { description: "An invoice was paid" });
+await relay.outbound.consumers.upsert("customer_42", { name: "Acme" });
+const endpoint = await relay.outbound.endpoints.create("customer_42", {
+  url: "https://customer.example/webhooks",
+  eventTypes: ["invoice.paid"],
+});
+// endpoint.secret is the signing secret your customer verifies deliveries with.
+
+// Every time the event happens.
+const message = await relay.outbound.messages.publish(
+  { consumer: "customer_42", eventType: "invoice.paid", payload: { invoice_id: "inv_123", amount: 4900 } },
+  { idempotencyKey: "invoice-paid:inv_123" }, // retrying with the same key never publishes twice
+);
+```
+
+Publishing is asynchronous: the result is the durable acceptance receipt.
+`outbound.messages.get(id)` shows each endpoint's delivery and attempts;
+`outbound.endpoints.retry`, `.recover` and `.replayMissing` re-send in the
+background and return a recovery task (`outbound.recoveryTasks.get`). A runnable
+version lives in [`examples/outbound.ts`](./examples/outbound.ts).
+
 ## Receiving webhooks
 
 Three delivery modes, from most durable to lowest latency:
