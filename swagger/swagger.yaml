@@ -1037,6 +1037,10 @@ definitions:
         - paused
         - disabled
         type: string
+      stats:
+        allOf:
+        - $ref: '#/definitions/structs.OutboundEndpointStats'
+        description: Stats are the endpoint's attempts over OutboundStatsWindow; read-only.
       timeout:
         description: seconds; zero uses OutboundDefaultTimeout
         type: integer
@@ -1205,6 +1209,20 @@ definitions:
       signature_method:
         type: string
     type: object
+  api.outboundAccess:
+    properties:
+      enabled:
+        type: boolean
+      request:
+        $ref: '#/definitions/api.outboundAccessRequest'
+    type: object
+  api.outboundAccessRequest:
+    properties:
+      requested_at:
+        type: string
+      ticket_id:
+        type: string
+    type: object
   api.outboundErrorResponse:
     properties:
       error:
@@ -1234,6 +1252,13 @@ definitions:
         type: string
       payload:
         type: object
+      unavailable_endpoint_ids:
+        description: |-
+          UnavailableEndpointIDs lists the endpoints whose delivery could not be
+          read in time; the message detail is otherwise complete.
+        items:
+          type: string
+        type: array
     type: object
   api.outboundRecoveryBody:
     properties:
@@ -3772,6 +3797,10 @@ definitions:
         - paused
         - disabled
         type: string
+      stats:
+        allOf:
+        - $ref: '#/definitions/structs.OutboundEndpointStats'
+        description: Stats are the endpoint's attempts over OutboundStatsWindow; read-only.
       timeout:
         description: seconds; zero uses OutboundDefaultTimeout
         type: integer
@@ -3779,6 +3808,13 @@ definitions:
         type: string
       url:
         type: string
+    type: object
+  structs.OutboundEndpointStats:
+    properties:
+      attempts:
+        type: integer
+      failures:
+        type: integer
     type: object
   structs.OutboundEventType:
     properties:
@@ -3794,6 +3830,18 @@ definitions:
         type: string
       updated_at:
         type: string
+    type: object
+  structs.OutboundHealth:
+    properties:
+      endpoints:
+        additionalProperties:
+          type: integer
+        type: object
+      since:
+        description: Since is the start of the window the stats cover.
+        type: string
+      stats:
+        $ref: '#/definitions/structs.OutboundEndpointStats'
     type: object
   structs.OutboundMessage:
     properties:
@@ -9994,6 +10042,47 @@ paths:
       summary: Update organization SAML SSO configuration
       tags:
       - organizations
+  /v1/outbound/access:
+    get:
+      description: Outbound webhooks are a pilot. Reports whether they are enabled
+        for the account and, while they are not, the open request to enable them.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.outboundAccess'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.outboundErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get outbound webhooks access
+      tags:
+      - outbound
+  /v1/outbound/access/request:
+    post:
+      description: Asks support to enable outbound webhooks by opening a support ticket.
+        Asking again while that ticket is open returns it instead of opening another;
+        nothing is opened when outbound webhooks are already enabled.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.outboundAccess'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.outboundErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Request outbound webhooks
+      tags:
+      - outbound
   /v1/outbound/consumers:
     get:
       description: 'Lists the producer''s customers that receive outbound webhooks.
@@ -10018,7 +10107,8 @@ paths:
       - outbound
   /v1/outbound/consumers/{consumer}/endpoints:
     get:
-      description: Newest first. Signing secrets are not included.
+      description: Newest first, with each endpoint's attempts and failures over the
+        last 24 hours. Signing secrets are not included.
       parameters:
       - description: Consumer ID
         in: path
@@ -10081,6 +10171,10 @@ paths:
             $ref: '#/definitions/api.outboundErrorResponse'
         "404":
           description: Consumer not found
+          schema:
+            $ref: '#/definitions/api.outboundErrorResponse'
+        "409":
+          description: The consumer already has an endpoint with this URL
           schema:
             $ref: '#/definitions/api.outboundErrorResponse'
       security:
@@ -10185,6 +10279,56 @@ paths:
       summary: Create or update an outbound consumer
       tags:
       - outbound
+  /v1/outbound/endpoints:
+    get:
+      description: Filter by state to find failing or disabled endpoints among all
+        of the account's consumers. Failing endpoints come longest failing first,
+        others newest first. Each endpoint carries its attempts and failures over
+        the last 24 hours. Signing secrets are not included.
+      parameters:
+      - description: Only endpoints in this state
+        enum:
+        - active
+        - failing
+        - paused
+        - disabled
+        in: query
+        name: state
+        type: string
+      - description: Only this consumer's endpoints
+        in: query
+        name: consumer
+        type: string
+      - description: Page size, at most 100
+        in: query
+        name: limit
+        type: integer
+      - description: Page offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/structs.OutboundEndpoint'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.outboundErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.outboundErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List outbound endpoints across consumers
+      tags:
+      - outbound
   /v1/outbound/endpoints/{id}:
     delete:
       description: Delivery history is kept.
@@ -10277,6 +10421,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/api.outboundErrorResponse'
+        "409":
+          description: The consumer already has an endpoint with this URL
+          schema:
+            $ref: '#/definitions/api.outboundErrorResponse'
       security:
       - BearerAuth: []
       summary: Update an outbound endpoint
@@ -10299,6 +10447,24 @@ paths:
         in: query
         name: offset
         type: integer
+      - description: Only deliveries in this status
+        enum:
+        - sent
+        - failed
+        - stalled
+        - received
+        - rejected
+        in: query
+        name: status
+        type: string
+      - description: Only deliveries of this event type
+        in: query
+        name: event_type
+        type: string
+      - description: Only the delivery of this message
+        in: query
+        name: message_id
+        type: string
       produces:
       - application/json
       responses:
@@ -10308,6 +10474,10 @@ paths:
             items:
               $ref: '#/definitions/structs.Log'
             type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.outboundErrorResponse'
         "403":
           description: Forbidden
           schema:
@@ -10479,7 +10649,8 @@ paths:
       consumes:
       - application/json
       description: Re-sends message_id to the endpoint in the background and returns
-        the recovery task.
+        the recovery task. A delivery waiting for its next scheduled retry is re-sent
+        now; one whose first attempt is still queued is refused.
       parameters:
       - description: Endpoint ID
         in: path
@@ -10509,6 +10680,10 @@ paths:
             $ref: '#/definitions/api.outboundErrorResponse'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/api.outboundErrorResponse'
+        "409":
+          description: The message's first delivery attempt is still queued
           schema:
             $ref: '#/definitions/api.outboundErrorResponse'
         "429":
@@ -10649,16 +10824,16 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/api.deletedResponse'
-        "400":
-          description: An endpoint subscribes to the event type
-          schema:
-            $ref: '#/definitions/api.outboundErrorResponse'
         "403":
           description: Forbidden
           schema:
             $ref: '#/definitions/api.outboundErrorResponse'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/api.outboundErrorResponse'
+        "409":
+          description: An endpoint subscribes to the event type
           schema:
             $ref: '#/definitions/api.outboundErrorResponse'
       security:
@@ -10700,6 +10875,27 @@ paths:
       security:
       - BearerAuth: []
       summary: Create or update an outbound event type
+      tags:
+      - outbound
+  /v1/outbound/health:
+    get:
+      description: Counts the account's endpoints by state and their delivery attempts
+        and failures over the last 24 hours, to the hour. Attempts are counted within
+        about 15 seconds.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.OutboundHealth'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.outboundErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get outbound endpoint health
       tags:
       - outbound
   /v1/outbound/messages:
@@ -10744,8 +10940,9 @@ paths:
       consumes:
       - application/json
       description: Accepts a message for signed, asynchronous delivery to every endpoint
-        of the consumer subscribed to its event type. Reusing an Idempotency-Key with
-        the same message returns the original receipt.
+        of the consumer subscribed to its event type. An event type not yet in the
+        catalog is added on first publish; deprecated event types are rejected. Reusing
+        an Idempotency-Key with the same message returns the original receipt.
       parameters:
       - description: Message
         in: body
@@ -10762,7 +10959,7 @@ paths:
       - application/json
       responses:
         "202":
-          description: Accepted
+          description: The receipt, without the payload
           schema:
             $ref: '#/definitions/structs.OutboundMessage'
         "400":
@@ -10779,6 +10976,10 @@ paths:
             $ref: '#/definitions/api.outboundErrorResponse'
         "409":
           description: The idempotency key was used for a different message
+          schema:
+            $ref: '#/definitions/api.outboundErrorResponse'
+        "413":
+          description: The payload exceeds 256 KiB
           schema:
             $ref: '#/definitions/api.outboundErrorResponse'
         "429":

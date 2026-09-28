@@ -70,7 +70,8 @@ function readEnv(name: string): string | undefined {
  *  1. `apiKey` (or a `secret` that looks like an `sk-` key) → Bearer auth.
  *  2. `key` + `secret` classic access token → HTTP Basic auth.
  *
- * Environment fallbacks (Node): `RELAY_API_KEY`, then `RELAY_KEY` + `RELAY_SECRET`.
+ * Environment fallbacks (Node): `RELAY_API_KEY`, then `RELAY_KEY` + `RELAY_SECRET`,
+ * and `RELAY_BASE_URL` for the API address (self-hosted or local development).
  */
 export function resolveConfig(config: WebhookRelayConfig = {}): ResolvedConfig {
   const apiKey = config.apiKey ?? readEnv("RELAY_API_KEY");
@@ -105,7 +106,7 @@ export function resolveConfig(config: WebhookRelayConfig = {}): ResolvedConfig {
     );
   }
 
-  const baseUrl = (config.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
+  const baseUrl = (config.baseUrl ?? readEnv("RELAY_BASE_URL") ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
 
   return {
     baseUrl,

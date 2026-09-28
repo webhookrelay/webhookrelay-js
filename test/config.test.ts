@@ -57,6 +57,18 @@ describe("resolveConfig", () => {
     }
   });
 
+  it("falls back to RELAY_BASE_URL from the environment", () => {
+    const saved = process.env.RELAY_BASE_URL;
+    process.env.RELAY_BASE_URL = "https://localhost:9300/";
+    try {
+      expect(resolveConfig({ apiKey: "sk-x" }).baseUrl).toBe("https://localhost:9300");
+      expect(resolveConfig({ apiKey: "sk-x", baseUrl: "https://explicit.example" }).baseUrl).toBe("https://explicit.example");
+    } finally {
+      if (saved === undefined) delete process.env.RELAY_BASE_URL;
+      else process.env.RELAY_BASE_URL = saved;
+    }
+  });
+
   it("sets a default timeout and a branded user-agent", () => {
     const c = resolveConfig({ apiKey: "sk-x" });
     expect(c.timeoutMs).toBe(30_000);

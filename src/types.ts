@@ -502,8 +502,39 @@ export interface OutboundEndpoint {
   failing_since?: string;
   /** When the secret replaced by the last rotation stops signing deliveries. */
   previous_secret_expires_at?: string;
+  /**
+   * Delivery attempts and failures over the last 24 hours. Read-only; set when
+   * endpoints are listed or read, absent on creation.
+   */
+  stats?: OutboundEndpointStats;
   created_at?: string;
   updated_at?: string;
+}
+
+/** Delivery attempts and how many of them failed. */
+export interface OutboundEndpointStats {
+  attempts: number;
+  failures: number;
+}
+
+export interface ListAllOutboundEndpointsParams {
+  /** Only endpoints in this state. `failing` endpoints come longest failing first. */
+  state?: OutboundEndpointState;
+  /** Only this consumer's endpoints. */
+  consumer?: string;
+  /** Page size, 1-100; defaults to 50. */
+  limit?: number;
+  offset?: number;
+}
+
+/** Health of all your endpoints. */
+export interface OutboundHealth {
+  /** Live endpoints by state; every state is present, zero when none. */
+  endpoints: Record<OutboundEndpointState, number>;
+  /** Attempts and failures across all endpoints since `since`. */
+  stats: OutboundEndpointStats;
+  /** RFC3339 start of the window the stats cover: 24 hours ago, to the hour. */
+  since: string;
 }
 
 /** A new endpoint with its signing secret, returned only on creation. */
@@ -559,6 +590,7 @@ export interface OutboundDeliveryAttempt {
   status_code?: number;
   outcome?: string;
   error?: string;
+  /** The endpoint's response body, base64-encoded. */
   response_body?: string;
 }
 
@@ -583,6 +615,11 @@ export interface OutboundMessage {
   enqueued_at?: string;
   /** Set by `messages.get`: one delivery per addressed endpoint. */
   deliveries?: OutboundDelivery[];
+  /**
+   * Set by `messages.get` when some deliveries could not be read in time;
+   * ask again later for those endpoints.
+   */
+  unavailable_endpoint_ids?: string[];
 }
 
 export interface ListOutboundMessagesParams {
@@ -596,6 +633,12 @@ export interface ListOutboundMessagesParams {
 export interface ListOutboundDeliveriesParams {
   limit?: number;
   offset?: number;
+  /** Only deliveries in this status. `stalled` means a retry is scheduled. */
+  status?: "sent" | "failed" | "stalled" | "received" | "rejected";
+  /** Only deliveries of this event type. */
+  event_type?: string;
+  /** Only the delivery of this message. */
+  message_id?: string;
 }
 
 export interface OutboundRecoveryParams {

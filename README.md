@@ -84,6 +84,7 @@ works when one of these is set:
 | --- | --- |
 | `RELAY_API_KEY` | Account API key (`sk-...`) |
 | `RELAY_KEY` + `RELAY_SECRET` | Classic access token pair |
+| `RELAY_BASE_URL` | API address, when not `https://my.webhookrelay.com` (self-hosted or local development) |
 
 Other options: `baseUrl`, `timeoutMs`, `fetch`, `headers`, `userAgent`.
 
@@ -237,8 +238,22 @@ const message = await relay.outbound.messages.publish(
 Publishing is asynchronous: the result is the durable acceptance receipt.
 `outbound.messages.get(id)` shows each endpoint's delivery and attempts;
 `outbound.endpoints.retry`, `.recover` and `.replayMissing` re-send in the
-background and return a recovery task (`outbound.recoveryTasks.get`). A runnable
-version lives in [`examples/outbound.ts`](./examples/outbound.ts).
+background and return a recovery task (`outbound.recoveryTasks.get`).
+
+Watch endpoint health across all your customers. Endpoints carry `stats`
+(attempts and failures over the last 24 hours) when listed or read:
+
+```ts
+const { endpoints, stats } = await relay.outbound.health();
+// endpoints: { active, failing, paused, disabled } counts; stats: { attempts, failures }
+
+// Failing endpoints come longest failing first. Filter by `consumer` too;
+// `limit` is 1-100 (default 50), page with `offset`.
+const failing = await relay.outbound.endpoints.listAll({ state: "failing", limit: 20 });
+for (const e of failing) console.log(e.consumer, e.url, e.failing_since, e.stats?.failures);
+```
+
+A runnable version lives in [`examples/outbound.ts`](./examples/outbound.ts).
 
 ## Receiving webhooks
 
