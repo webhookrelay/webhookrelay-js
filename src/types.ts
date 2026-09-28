@@ -502,8 +502,39 @@ export interface OutboundEndpoint {
   failing_since?: string;
   /** When the secret replaced by the last rotation stops signing deliveries. */
   previous_secret_expires_at?: string;
+  /**
+   * Delivery attempts and failures over the last 24 hours. Read-only; set when
+   * endpoints are listed or read, absent on creation.
+   */
+  stats?: OutboundEndpointStats;
   created_at?: string;
   updated_at?: string;
+}
+
+/** Delivery attempts and how many of them failed. */
+export interface OutboundEndpointStats {
+  attempts: number;
+  failures: number;
+}
+
+export interface ListAllOutboundEndpointsParams {
+  /** Only endpoints in this state. `failing` endpoints come longest failing first. */
+  state?: OutboundEndpointState;
+  /** Only this consumer's endpoints. */
+  consumer?: string;
+  /** Page size, 1-100; defaults to 50. */
+  limit?: number;
+  offset?: number;
+}
+
+/** Health of all your endpoints. */
+export interface OutboundHealth {
+  /** Live endpoints by state; every state is present, zero when none. */
+  endpoints: Record<OutboundEndpointState, number>;
+  /** Attempts and failures across all endpoints since `since`. */
+  stats: OutboundEndpointStats;
+  /** RFC3339 start of the window the stats cover: 24 hours ago, to the hour. */
+  since: string;
 }
 
 /** A new endpoint with its signing secret, returned only on creation. */

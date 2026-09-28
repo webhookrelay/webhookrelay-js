@@ -791,6 +791,8 @@ export interface ApiEndpointWithSecret {
   rate?: number;
   secret?: string;
   state?: "active" | "failing" | "paused" | "disabled";
+  /** Stats are the endpoint's attempts over OutboundStatsWindow; read-only. */
+  stats?: StructsOutboundEndpointStats;
   /** seconds; zero uses OutboundDefaultTimeout */
   timeout?: number;
   updated_at?: string;
@@ -2479,10 +2481,17 @@ export interface StructsOutboundEndpoint {
   previous_secret_expires_at?: string;
   rate?: number;
   state?: "active" | "failing" | "paused" | "disabled";
+  /** Stats are the endpoint's attempts over OutboundStatsWindow; read-only. */
+  stats?: StructsOutboundEndpointStats;
   /** seconds; zero uses OutboundDefaultTimeout */
   timeout?: number;
   updated_at?: string;
   url?: string;
+}
+
+export interface StructsOutboundEndpointStats {
+  attempts?: number;
+  failures?: number;
 }
 
 export interface StructsOutboundEventType {
@@ -2492,6 +2501,13 @@ export interface StructsOutboundEventType {
   example?: object;
   name?: string;
   updated_at?: string;
+}
+
+export interface StructsOutboundHealth {
+  endpoints?: Record<string, number>;
+  /** Since is the start of the window the stats cover. */
+  since?: string;
+  stats?: StructsOutboundEndpointStats;
 }
 
 export interface StructsOutboundMessage {
@@ -6943,7 +6959,7 @@ export class Api<
       }),
 
     /**
-     * @description Newest first. Signing secrets are not included.
+     * @description Newest first, with each endpoint's attempts and failures over the last 24 hours. Signing secrets are not included.
      *
      * @tags outbound
      * @name OutboundConsumersEndpointsList
@@ -7043,6 +7059,37 @@ export class Api<
         body: consumer,
         secure: true,
         type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Filter by state to find failing or disabled endpoints among all of the account's consumers. Failing endpoints come longest failing first, others newest first. Each endpoint carries its attempts and failures over the last 24 hours. Signing secrets are not included.
+     *
+     * @tags outbound
+     * @name OutboundEndpointsList
+     * @summary List outbound endpoints across consumers
+     * @request GET:/v1/outbound/endpoints
+     * @secure
+     */
+    outboundEndpointsList: (
+      query?: {
+        /** Only endpoints in this state */
+        state?: "active" | "failing" | "paused" | "disabled";
+        /** Only this consumer's endpoints */
+        consumer?: string;
+        /** Page size, at most 100 */
+        limit?: number;
+        /** Page offset */
+        offset?: number;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.request<StructsOutboundEndpoint[], ApiOutboundErrorResponse>({
+        path: `/v1/outbound/endpoints`,
+        method: "GET",
+        query: query,
+        secure: true,
         format: "json",
         ...params,
       }),
@@ -7370,6 +7417,24 @@ export class Api<
         body: eventType,
         secure: true,
         type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Counts the account's endpoints by state and their delivery attempts and failures over the last 24 hours, to the hour. Attempts are counted within about 15 seconds.
+     *
+     * @tags outbound
+     * @name OutboundHealthList
+     * @summary Get outbound endpoint health
+     * @request GET:/v1/outbound/health
+     * @secure
+     */
+    outboundHealthList: (params: RequestParams = {}) =>
+      this.request<StructsOutboundHealth, ApiOutboundErrorResponse>({
+        path: `/v1/outbound/health`,
+        method: "GET",
+        secure: true,
         format: "json",
         ...params,
       }),

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createClient } from "./helpers.js";
-import { onboardCustomer, publishInvoicePaid } from "../examples/outbound.js";
+import { onboardCustomer, publishInvoicePaid, reportFailingEndpoints } from "../examples/outbound.js";
 
 const base = "https://my.webhookrelay.com";
 const requests = (calls: { method: string; url: string }[]) =>
@@ -117,6 +117,76 @@ describe("outbound", () => {
     ]);
     expect(calls[2]?.body).toEqual({ message_id: "message-1" });
     expect(calls[3]?.body).toEqual({ since: "2026-09-01T00:00:00Z" });
+  });
+
+  it("lists endpoints across consumers with filters and stats", async () => {
+    const endpoint = {
+      id: "endpoint-1",
+      consumer: "customer_42",
+      url: "https://example.com/hook",
+      event_types: ["*"],
+      rate: 0,
+      timeout: 0,
+      auto_disable: true,
+      state: "failing",
+      consecutive_failures: 7,
+      failing_since: "2026-09-27T10:00:00Z",
+      stats: { attempts: 12, failures: 7 },
+    };
+    const { relay, calls } = createClient(() => ({ json: [endpoint] }));
+
+    const all = await relay.outbound.endpoints.listAll();
+    const failing = await relay.outbound.endpoints.listAll({
+      state: "failing",
+      consumer: "customer:42",
+      limit: 100,
+      offset: 20,
+    });
+    const listed = await relay.outbound.endpoints.list("customer_42");
+
+    expect(requests(calls)).toEqual([
+      "GET /v1/outbound/endpoints",
+      "GET /v1/outbound/endpoints?state=failing&consumer=customer%3A42&limit=100&offset=20",
+      "GET /v1/outbound/consumers/customer_42/endpoints",
+    ]);
+    expect(all).toEqual([endpoint]);
+    expect(failing[0]?.stats).toEqual({ attempts: 12, failures: 7 });
+    expect(failing[0]?.failing_since).toBe("2026-09-27T10:00:00Z");
+    expect(listed[0]?.stats?.failures).toBe(7);
+  });
+
+  it("reads outbound health", async () => {
+    const body = {
+      endpoints: { active: 3, failing: 1, paused: 0, disabled: 2 },
+      stats: { attempts: 120, failures: 9 },
+      since: "2026-09-27T12:00:00Z",
+    };
+    const { relay, calls } = createClient(() => ({ json: body }));
+
+    const health = await relay.outbound.health();
+
+    expect(requests(calls)).toEqual(["GET /v1/outbound/health"]);
+    expect(health).toEqual(body);
+    expect(health.endpoints.failing).toBe(1);
+    expect(health.stats.failures).toBe(9);
+  });
+
+  it("runs the failing-endpoints example", async () => {
+    const { relay, calls } = createClient((url) =>
+      url.endsWith("/health")
+        ? { json: { endpoints: { active: 1, failing: 1, paused: 0, disabled: 0 }, stats: { attempts: 4, failures: 3 }, since: "2026-09-27T12:00:00Z" } }
+        : { json: [{ id: "endpoint-1", consumer: "customer_42", url: "https://customer.example/webhooks", failing_since: "2026-09-27T10:00:00Z", stats: { attempts: 4, failures: 3 } }] },
+    );
+
+    const report = await reportFailingEndpoints(relay);
+
+    expect(requests(calls)).toEqual([
+      "GET /v1/outbound/health",
+      "GET /v1/outbound/endpoints?state=failing&limit=20",
+    ]);
+    expect(report).toEqual([
+      { consumer: "customer_42", url: "https://customer.example/webhooks", failingSince: "2026-09-27T10:00:00Z", failures24h: 3 },
+    ]);
   });
 
   it("runs the example that the dashboard shows", async () => {

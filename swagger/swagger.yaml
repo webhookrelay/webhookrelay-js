@@ -1037,6 +1037,10 @@ definitions:
         - paused
         - disabled
         type: string
+      stats:
+        allOf:
+        - $ref: '#/definitions/structs.OutboundEndpointStats'
+        description: Stats are the endpoint's attempts over OutboundStatsWindow; read-only.
       timeout:
         description: seconds; zero uses OutboundDefaultTimeout
         type: integer
@@ -3793,6 +3797,10 @@ definitions:
         - paused
         - disabled
         type: string
+      stats:
+        allOf:
+        - $ref: '#/definitions/structs.OutboundEndpointStats'
+        description: Stats are the endpoint's attempts over OutboundStatsWindow; read-only.
       timeout:
         description: seconds; zero uses OutboundDefaultTimeout
         type: integer
@@ -3800,6 +3808,13 @@ definitions:
         type: string
       url:
         type: string
+    type: object
+  structs.OutboundEndpointStats:
+    properties:
+      attempts:
+        type: integer
+      failures:
+        type: integer
     type: object
   structs.OutboundEventType:
     properties:
@@ -3815,6 +3830,18 @@ definitions:
         type: string
       updated_at:
         type: string
+    type: object
+  structs.OutboundHealth:
+    properties:
+      endpoints:
+        additionalProperties:
+          type: integer
+        type: object
+      since:
+        description: Since is the start of the window the stats cover.
+        type: string
+      stats:
+        $ref: '#/definitions/structs.OutboundEndpointStats'
     type: object
   structs.OutboundMessage:
     properties:
@@ -10080,7 +10107,8 @@ paths:
       - outbound
   /v1/outbound/consumers/{consumer}/endpoints:
     get:
-      description: Newest first. Signing secrets are not included.
+      description: Newest first, with each endpoint's attempts and failures over the
+        last 24 hours. Signing secrets are not included.
       parameters:
       - description: Consumer ID
         in: path
@@ -10249,6 +10277,56 @@ paths:
       security:
       - BearerAuth: []
       summary: Create or update an outbound consumer
+      tags:
+      - outbound
+  /v1/outbound/endpoints:
+    get:
+      description: Filter by state to find failing or disabled endpoints among all
+        of the account's consumers. Failing endpoints come longest failing first,
+        others newest first. Each endpoint carries its attempts and failures over
+        the last 24 hours. Signing secrets are not included.
+      parameters:
+      - description: Only endpoints in this state
+        enum:
+        - active
+        - failing
+        - paused
+        - disabled
+        in: query
+        name: state
+        type: string
+      - description: Only this consumer's endpoints
+        in: query
+        name: consumer
+        type: string
+      - description: Page size, at most 100
+        in: query
+        name: limit
+        type: integer
+      - description: Page offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/structs.OutboundEndpoint'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.outboundErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.outboundErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List outbound endpoints across consumers
       tags:
       - outbound
   /v1/outbound/endpoints/{id}:
@@ -10797,6 +10875,27 @@ paths:
       security:
       - BearerAuth: []
       summary: Create or update an outbound event type
+      tags:
+      - outbound
+  /v1/outbound/health:
+    get:
+      description: Counts the account's endpoints by state and their delivery attempts
+        and failures over the last 24 hours, to the hour. Attempts are counted within
+        about 15 seconds.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/structs.OutboundHealth'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/api.outboundErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get outbound endpoint health
       tags:
       - outbound
   /v1/outbound/messages:

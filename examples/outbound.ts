@@ -32,6 +32,19 @@ export function publishInvoicePaid(relay: WebhookRelay) {
 }
 // dashboard-snippet:end
 
+// Find customers whose endpoints are failing, longest failing first.
+export async function reportFailingEndpoints(relay: WebhookRelay) {
+  const health = await relay.outbound.health();
+  if (health.endpoints.failing === 0) return [];
+  const failing = await relay.outbound.endpoints.listAll({ state: "failing", limit: 20 });
+  return failing.map((e) => ({
+    consumer: e.consumer,
+    url: e.url,
+    failingSince: e.failing_since,
+    failures24h: e.stats?.failures ?? 0,
+  }));
+}
+
 async function main() {
   const customerURL = process.env.CUSTOMER_WEBHOOK_URL;
   if (!customerURL) throw new Error("set CUSTOMER_WEBHOOK_URL");
@@ -40,6 +53,7 @@ async function main() {
   console.log("endpoint:", endpoint.id, "signing secret:", endpoint.secret);
   const message = await publishInvoicePaid(relay);
   console.log("message:", message.id, "->", message.endpoint_ids.length, "endpoint(s)");
+  console.log("failing endpoints:", await reportFailingEndpoints(relay));
 }
 
 if (import.meta.filename === process.argv[1]) {

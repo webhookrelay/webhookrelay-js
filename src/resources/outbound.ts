@@ -1,6 +1,7 @@
 import type { HttpClient } from "../http.js";
 import { outboundEndpointParams, outboundMessageParams } from "../params.js";
 import type {
+  ListAllOutboundEndpointsParams,
   ListOutboundDeliveriesParams,
   ListOutboundMessagesParams,
   OutboundConsumer,
@@ -9,6 +10,7 @@ import type {
   OutboundEndpointParams,
   OutboundEndpointWithSecret,
   OutboundEventType,
+  OutboundHealth,
   OutboundMessage,
   OutboundRecoveryParams,
   OutboundRecoveryTask,
@@ -101,12 +103,29 @@ export class OutboundEventTypesResource {
 export class OutboundEndpointsResource {
   constructor(private readonly http: HttpClient) {}
 
-  /** List a consumer's endpoints, newest first. */
+  /** List a consumer's endpoints, newest first, with their stats. */
   list(consumerId: string): Promise<OutboundEndpoint[]> {
     return this.http.unwrap(
       this.http.api.v1.outboundConsumersEndpointsList(segment(consumerId)),
       "GET",
       "/v1/outbound/consumers/{consumer}/endpoints",
+    );
+  }
+
+  /**
+   * List endpoints across all consumers, for example to find the failing
+   * ones. Failing endpoints come longest failing first, others newest first.
+   * Each endpoint carries its attempts and failures over the last 24 hours.
+   *
+   * ```ts
+   * const failing = await relay.outbound.endpoints.listAll({ state: "failing", limit: 20 });
+   * ```
+   */
+  listAll(params: ListAllOutboundEndpointsParams = {}): Promise<OutboundEndpoint[]> {
+    return this.http.unwrap(
+      this.http.api.v1.outboundEndpointsList(params),
+      "GET",
+      "/v1/outbound/endpoints",
     );
   }
 
@@ -317,11 +336,29 @@ export class OutboundResource {
   readonly messages: OutboundMessagesResource;
   readonly recoveryTasks: OutboundRecoveryTasksResource;
 
-  constructor(http: HttpClient) {
+  constructor(private readonly http: HttpClient) {
     this.consumers = new OutboundConsumersResource(http);
     this.eventTypes = new OutboundEventTypesResource(http);
     this.endpoints = new OutboundEndpointsResource(http);
     this.messages = new OutboundMessagesResource(http);
     this.recoveryTasks = new OutboundRecoveryTasksResource(http);
+  }
+
+  /**
+   * Count your endpoints by state and their delivery attempts and failures
+   * over the last 24 hours, to the hour. Attempts are counted within about
+   * 15 seconds.
+   *
+   * ```ts
+   * const { endpoints, stats } = await relay.outbound.health();
+   * console.log(endpoints.failing, stats.failures / Math.max(stats.attempts, 1));
+   * ```
+   */
+  health(): Promise<OutboundHealth> {
+    return this.http.unwrap(
+      this.http.api.v1.outboundHealthList(),
+      "GET",
+      "/v1/outbound/health",
+    );
   }
 }
