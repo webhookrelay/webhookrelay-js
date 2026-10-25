@@ -50,6 +50,20 @@ describe("outbound", () => {
     expect(calls[1]?.body).toEqual({ url: "https://example.com/v2", event_types: ["a"] });
   });
 
+  it("imports an existing signing secret on create", async () => {
+    const secret = "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw";
+    const { relay, calls } = createClient(() => ({ json: { id: "endpoint-1", secret } }));
+
+    const endpoint = await relay.outbound.endpoints.create("customer_42", {
+      url: "https://example.com/hook",
+      eventTypes: ["invoice.paid"],
+      secret,
+    });
+
+    expect(endpoint.secret).toBe(secret);
+    expect(calls[0]?.body).toEqual({ url: "https://example.com/hook", event_types: ["invoice.paid"], secret });
+  });
+
   it("pauses, resumes and handles signing secrets", async () => {
     const { relay, calls } = createClient((url) =>
       url.includes("/secret/") ? { json: { secret: "whsec_new" } } : { json: { id: "endpoint-1", state: "paused" } },

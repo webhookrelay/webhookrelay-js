@@ -7,6 +7,7 @@ import type {
   OutboundConsumer,
   OutboundDelivery,
   OutboundEndpoint,
+  OutboundEndpointCreateParams,
   OutboundEndpointParams,
   OutboundEndpointWithSecret,
   OutboundEventType,
@@ -140,7 +141,8 @@ export class OutboundEndpointsResource {
 
   /**
    * Register an HTTPS endpoint for a consumer. The result carries the signing
-   * secret your customer verifies deliveries with.
+   * secret your customer verifies deliveries with: a new one, or `secret` when
+   * importing an existing Standard Webhooks secret (e.g. from Svix).
    *
    * ```ts
    * const endpoint = await relay.outbound.endpoints.create("customer_42", {
@@ -149,7 +151,7 @@ export class OutboundEndpointsResource {
    * });
    * ```
    */
-  create(consumerId: string, params: OutboundEndpointParams): Promise<OutboundEndpointWithSecret> {
+  create(consumerId: string, params: OutboundEndpointCreateParams): Promise<OutboundEndpointWithSecret> {
     return this.http.unwrap(
       this.http.api.v1.outboundConsumersEndpointsCreate(
         segment(consumerId),
