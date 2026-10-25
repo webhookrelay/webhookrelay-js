@@ -169,6 +169,21 @@ describe("outbound", () => {
     expect(listed[0]?.stats?.failures).toBe(7);
   });
 
+  it("reads and requests outbound access", async () => {
+    const body = {
+      enabled: true,
+      limits: { consumers: 100, endpoints_per_consumer: 10, event_types: 300 },
+    };
+    const { relay, calls } = createClient(() => ({ json: body }));
+
+    const access = await relay.outbound.access();
+    await relay.outbound.requestAccess();
+
+    expect(requests(calls)).toEqual(["GET /v1/outbound/access", "POST /v1/outbound/access/request"]);
+    expect(access.enabled).toBe(true);
+    expect(access.limits?.endpoints_per_consumer).toBe(10);
+  });
+
   it("reads outbound health", async () => {
     const body = {
       endpoints: { active: 3, failing: 1, paused: 0, disabled: 2 },

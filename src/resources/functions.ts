@@ -1,5 +1,5 @@
 import type { HttpClient } from "../http.js";
-import { functionParams } from "../params.js";
+import { functionParams, mergeForReplace } from "../params.js";
 import type {
   CreateFunctionParams,
   FunctionConfigVariable,
@@ -60,19 +60,27 @@ export class FunctionsResource {
     );
   }
 
-  /** Update a function's name or source. */
+  /**
+   * Update a function's name or source. Omitted fields keep their current
+   * values: the API's `PUT /v1/functions/{id}` replaces the name, driver and
+   * source together (a missing `payload` would empty the code), so unless all
+   * three are given the function is fetched first and merged.
+   */
   async update(
     functionId: string,
     params: UpdateFunctionParams,
   ): Promise<WebhookFunction> {
     let body = params;
-    if (params.name === undefined || params.driver === undefined) {
+    if (
+      params.name === undefined ||
+      params.driver === undefined ||
+      params.payload === undefined
+    ) {
       const current = await this.get(functionId);
-      body = {
-        name: current.name,
-        driver: current.driver,
-        ...params,
-      };
+      body = mergeForReplace(
+        { name: current.name, driver: current.driver, payload: current.payload },
+        params,
+      ) as UpdateFunctionParams;
     }
 
     await this.http.unwrap(

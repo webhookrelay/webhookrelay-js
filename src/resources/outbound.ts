@@ -4,6 +4,7 @@ import type {
   ListAllOutboundEndpointsParams,
   ListOutboundDeliveriesParams,
   ListOutboundMessagesParams,
+  OutboundAccess,
   OutboundConsumer,
   OutboundDelivery,
   OutboundEndpoint,
@@ -344,6 +345,36 @@ export class OutboundResource {
     this.endpoints = new OutboundEndpointsResource(http);
     this.messages = new OutboundMessagesResource(http);
     this.recoveryTasks = new OutboundRecoveryTasksResource(http);
+  }
+
+  /**
+   * Report whether outbound webhooks are enabled for the account, with its
+   * limits (consumers, endpoints per consumer, event types). Works even when
+   * they are not enabled, unlike the other outbound methods.
+   *
+   * ```ts
+   * const { enabled, limits } = await relay.outbound.access();
+   * ```
+   */
+  access(): Promise<OutboundAccess> {
+    return this.http.unwrap(
+      this.http.api.v1.outboundAccessList(),
+      "GET",
+      "/v1/outbound/access",
+    );
+  }
+
+  /**
+   * Ask support to enable outbound webhooks by opening a support ticket.
+   * Asking again while that ticket is open returns it; nothing is opened when
+   * outbound webhooks are already enabled.
+   */
+  requestAccess(): Promise<OutboundAccess> {
+    return this.http.unwrap(
+      this.http.api.v1.outboundAccessRequestCreate(),
+      "POST",
+      "/v1/outbound/access/request",
+    );
   }
 
   /**
