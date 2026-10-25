@@ -211,7 +211,12 @@ describeLive("Webhook Relay live API: outbound webhooks", () => {
   beforeAll(async () => {
     const access = await relay.outbound.access();
     if (!access.enabled) {
-      throw new Error("outbound not enabled for the CI account (needs Basic+ plan)");
+      // Limits hint at the plan family; an open request means access was asked for.
+      const detail = JSON.stringify({
+        limits: access.limits ?? null,
+        open_request: Boolean(access.request),
+      });
+      throw new Error(`outbound not enabled for the CI account (needs Basic+ plan); GET /v1/outbound/access → ${detail}`);
     }
     expect(access.limits?.consumers ?? 1).toBeGreaterThan(0);
 
