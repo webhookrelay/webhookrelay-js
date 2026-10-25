@@ -562,6 +562,16 @@ export interface OutboundEndpointParams {
   functionId?: string;
 }
 
+/** Endpoint configuration for `endpoints.create`, with an optional secret to import. */
+export interface OutboundEndpointCreateParams extends OutboundEndpointParams {
+  /**
+   * Existing Standard Webhooks signing secret to import (`whsec_` + base64 of a
+   * 24-64 byte key, e.g. exported from Svix) so the consumer keeps verifying
+   * with the key it already has. Omit it to generate a new secret.
+   */
+  secret?: string;
+}
+
 export interface PublishOutboundMessageParams {
   consumer: string;
   event_type?: string;

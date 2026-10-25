@@ -227,6 +227,8 @@ const endpoint = await relay.outbound.endpoints.create("customer_42", {
   eventTypes: ["invoice.paid"],
 });
 // endpoint.secret is the signing secret your customer verifies deliveries with.
+// Migrating from Svix or another Standard Webhooks sender? Pass `secret` with the
+// endpoint's existing whsec_ secret so your customer keeps verifying with it.
 
 // Every time the event happens.
 const message = await relay.outbound.messages.publish(
