@@ -40,6 +40,8 @@ export interface Bucket {
   static_ip?: boolean;
   large_webhooks?: boolean;
   cron_id?: string;
+  /** Dashboard workspace the bucket is grouped under; null when ungrouped. */
+  workspace_id?: string | null;
   auth?: BucketAuth;
   inputs?: Input[];
   outputs?: Output[];
@@ -54,12 +56,28 @@ export interface CreateBucketParams {
   description?: string;
   ephemeral?: boolean;
   stream?: boolean;
+  /** CamelCase alias for `static_ip`. */
+  staticIp?: boolean;
   static_ip?: boolean;
+  /** CamelCase alias for `large_webhooks`. */
+  largeWebhooks?: boolean;
   large_webhooks?: boolean;
   auth?: BucketAuth;
 }
 
-export type UpdateBucketParams = Partial<CreateBucketParams>;
+/**
+ * Fields to change on a bucket. Omitted fields keep their current value
+ * (see {@link import("./resources/buckets.js").BucketsResource.update}).
+ */
+export interface UpdateBucketParams extends Partial<CreateBucketParams> {
+  /**
+   * Move the bucket to a dashboard workspace; `null` or `""` ungroups it.
+   * Left unchanged unless given.
+   */
+  workspace_id?: string | null;
+  /** CamelCase alias for `workspace_id`. */
+  workspaceId?: string | null;
+}
 
 // ---------------------------------------------------------------------------
 // Inputs (public endpoints that receive webhooks)
@@ -384,15 +402,22 @@ export interface ServiceConnectionOutput {
 // Webhook logs
 // ---------------------------------------------------------------------------
 
-/** Delivery status of a webhook log entry. */
+/**
+ * Delivery status of a webhook log entry. The API sends it as a lowercase
+ * string (e.g. `"sent"`), so compare with either `RequestStatus.Sent` or
+ * `"sent"`.
+ */
 export enum RequestStatus {
-  Preparing = 0,
-  Sent = 1,
-  Failed = 2,
-  Stalled = 3,
-  Received = 4,
-  Rejected = 5,
+  Preparing = "preparing",
+  Sent = "sent",
+  Failed = "failed",
+  Stalled = "stalled",
+  Received = "received",
+  Rejected = "rejected",
 }
+
+/** {@link RequestStatus} as the plain string the API returns. */
+export type RequestStatusName = `${RequestStatus}`;
 
 export interface WebhookLog {
   id: string;
@@ -401,7 +426,7 @@ export interface WebhookLog {
   input_id?: string;
   output_id?: string;
   method?: string;
-  status?: RequestStatus;
+  status?: RequestStatus | RequestStatusName;
   status_code?: number;
   body?: string;
   headers?: Headers;
@@ -448,6 +473,23 @@ export interface WebhookLogsPage {
 // ---------------------------------------------------------------------------
 // Outbound webhooks (pilot): send signed webhooks to your own customers
 // ---------------------------------------------------------------------------
+
+/** Whether outbound webhooks are enabled for the account, and its limits. */
+export interface OutboundAccess {
+  enabled: boolean;
+  /** The open request to enable outbound webhooks; absent when none was made. */
+  request?: {
+    /** The support ticket; replies arrive there. */
+    ticket_id: string;
+    requested_at?: string;
+  };
+  /** The account's effective outbound limits; absent when they could not be read. */
+  limits?: {
+    consumers: number;
+    endpoints_per_consumer: number;
+    event_types: number;
+  };
+}
 
 /** One of your customers. You choose its ID, for example your own customer ID. */
 export interface OutboundConsumer {

@@ -99,6 +99,15 @@ await relay.buckets.findByName("orders");
 await relay.buckets.delete(bucket.id); // delete its inputs/outputs first
 ```
 
+`update` is a partial update: fields you leave out keep their current values.
+The API's `PUT /v1/buckets/{id}` replaces the whole bucket, so the SDK fetches
+the bucket, merges your changes over its editable fields (`name`,
+`description`, `stream`, `ephemeral`, `static_ip`, `large_webhooks`, and
+`auth` field by field) and sends the result. `workspace_id` is only sent when
+you pass it (`null` ungroups the bucket). `outputs.update`,
+`functions.update` and the service-connection `update*` methods work the same
+way.
+
 ## Inputs
 
 Inputs are the public HTTPS endpoints that receive webhooks.
@@ -138,6 +147,7 @@ await relay.outputs.setRules(bucket.id, output.id, {
 });
 
 await relay.outputs.deleteRules(bucket.id, output.id); // forward everything
+await relay.outputs.update(bucket.id, output.id, { disabled: true }); // other fields are kept
 await relay.outputs.delete(bucket.id, output.id);
 ```
 
@@ -215,10 +225,12 @@ await relay.serviceConnections.list();
 Register each customer as a consumer with the HTTPS endpoint they give you, then
 publish events. Webhook Relay signs every delivery
 ([Standard Webhooks](https://www.standardwebhooks.com/)), retries failures durably
-for up to 48 hours and keeps the delivery history. Outbound webhooks are in pilot:
-the account needs the `outbound` feature.
+for up to 48 hours and keeps the delivery history. Check that outbound webhooks
+are enabled for your account (and its limits) with `relay.outbound.access()`.
 
 ```ts
+const { enabled, limits } = await relay.outbound.access();
+
 // Once per customer.
 await relay.outbound.eventTypes.upsert("invoice.paid", { description: "An invoice was paid" });
 await relay.outbound.consumers.upsert("customer_42", { name: "Acme" });

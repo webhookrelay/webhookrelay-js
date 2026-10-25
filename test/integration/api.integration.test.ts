@@ -154,6 +154,11 @@ describeLive("Webhook Relay live API", () => {
         description: "Updated by webhookrelay-js live integration tests",
       });
       expect(updated.id).toBe(bucket.id);
+      // Partial update: the PUT is a full replace, so name/stream must survive.
+      const refetched = await relay.buckets.get(bucket.id);
+      expect(refetched.description).toBe("Updated by webhookrelay-js live integration tests");
+      expect(refetched.name).toBe(bucket.name);
+      expect(refetched.stream).toBe(true);
 
       const input = await relay.inputs.create(bucket.id, {
         name: "public",
@@ -182,6 +187,13 @@ describeLive("Webhook Relay live API", () => {
       });
       expect(ruled.id).toBe(output.id);
       await relay.outputs.deleteRules(bucket.id, output.id);
+
+      // Partial output update keeps the destination and name.
+      await relay.outputs.update(bucket.id, output.id, { description: "partial" });
+      const outputAfter = (await relay.outputs.list(bucket.id)).find((o) => o.id === output.id);
+      expect(outputAfter?.description).toBe("partial");
+      expect(outputAfter?.name).toBe("example");
+      expect(outputAfter?.destination).toContain("example.com/webhookrelay-js");
 
       expect(await relay.outputs.list(bucket.id)).toEqual(
         expect.arrayContaining([expect.objectContaining({ id: output.id })]),
@@ -215,6 +227,12 @@ describeLive("Webhook Relay live API", () => {
         payload: "function transform(r) { r.Headers = r.Headers || {}; return r; }",
       });
       expect(updated.id).toBe(fn.id);
+
+      // Renaming alone must not blank the source (the PUT replaces it).
+      const renamedTo = bucketName("fn-renamed");
+      const renamed = await relay.functions.update(fn.id, { name: renamedTo });
+      expect(renamed.name).toBe(renamedTo);
+      expect(renamed.payload).toContain("r.Headers = r.Headers || {}");
 
       const variable = await relay.functions.setConfig(fn.id, "SDK_TEST", "1");
       expect(variable.key).toBe("SDK_TEST");

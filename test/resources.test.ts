@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { RequestStatus } from "../src/index.js";
 import { createClient } from "./helpers.js";
 
 const base = "https://my.webhookrelay.com";
@@ -22,6 +23,7 @@ describe("buckets", () => {
     expect(calls.map((c) => `${c.method} ${c.url.replace(base, "")}`)).toEqual([
       "GET /v1/buckets",
       "POST /v1/buckets",
+      "GET /v1/buckets/b1",
       "GET /v1/buckets/b1",
       "PUT /v1/buckets/b1",
       "DELETE /v1/buckets/b1",
@@ -151,6 +153,12 @@ describe("webhooks (logs)", () => {
     expect(calls[0].url).toContain("status=sent");
   });
 
+  it("RequestStatus matches the string statuses the API returns", () => {
+    expect(RequestStatus.Sent).toBe("sent");
+    expect(RequestStatus.Preparing).toBe("preparing");
+    expect(RequestStatus.Rejected).toBe("rejected");
+  });
+
   it("gets and updates a single log", async () => {
     const { relay, calls } = createClient(() => ({ json: { id: "l1" } }));
     await relay.webhooks.get("l1");
@@ -205,13 +213,20 @@ describe("remaining resource methods", () => {
     );
     await relay.outputs.update("b1", "o1", { disabled: true });
     expect(await relay.outputs.list("b1")).toHaveLength(1);
-    expect(calls[0].method).toBe("PUT");
-    expect(calls[0].url).toContain("/v1/buckets/b1/outputs/o1");
-    expect(calls[0].body).toEqual({ disabled: true });
+    expect(calls[0].method).toBe("GET");
+    expect(calls[1].method).toBe("PUT");
+    expect(calls[1].url).toContain("/v1/buckets/b1/outputs/o1");
+    expect(calls[1].body).toEqual({ disabled: true });
   });
 
   it("service connections: full CRUD + managed inputs/outputs", async () => {
-    const { relay, calls } = createClient(() => ({ json: { id: "sc1" } }));
+    const { relay, calls } = createClient((url, method) => {
+      if (method === "GET" && url.endsWith("/service-connection-inputs"))
+        return { json: [{ id: "i1" }] };
+      if (method === "GET" && url.endsWith("/service-connection-outputs"))
+        return { json: [{ id: "o1" }] };
+      return { json: { id: "sc1" } };
+    });
     await relay.serviceConnections.get("sc1");
     await relay.serviceConnections.update("sc1", { name: "renamed" });
     await relay.serviceConnections.delete("sc1");
@@ -228,8 +243,10 @@ describe("remaining resource methods", () => {
       "DELETE /v1/service-connections/sc1",
       "GET /v1/buckets/b1/service-connection-inputs",
       "POST /v1/buckets/b1/service-connection-inputs",
+      "GET /v1/buckets/b1/service-connection-inputs",
       "PUT /v1/buckets/b1/service-connection-inputs/i1",
       "DELETE /v1/buckets/b1/service-connection-inputs/i1",
+      "GET /v1/buckets/b1/service-connection-outputs",
       "PUT /v1/buckets/b1/service-connection-outputs/o1",
       "DELETE /v1/buckets/b1/service-connection-outputs/o1",
     ]);

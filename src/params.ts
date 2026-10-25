@@ -1,5 +1,11 @@
 type Params = Record<string, unknown>;
 
+const bucketAliases: Record<string, string> = {
+  staticIp: "static_ip",
+  largeWebhooks: "large_webhooks",
+  workspaceId: "workspace_id",
+};
+
 const inputAliases: Record<string, string> = {
   functionId: "function_id",
   statusCode: "status_code",
@@ -57,6 +63,10 @@ const outboundMessageAliases: Record<string, string> = {
   eventId: "event_id",
 };
 
+export function bucketParams<T extends object>(params: T): T {
+  return applyAliases(params, bucketAliases) as T;
+}
+
 export function inputParams<T extends object>(params: T): T {
   return applyAliases(params, inputAliases) as T;
 }
@@ -83,6 +93,27 @@ export function outboundEndpointParams<T extends object>(params: T): T {
 
 export function outboundMessageParams<T extends object>(params: T): T {
   return applyAliases(params, outboundMessageAliases) as T;
+}
+
+/**
+ * Overlay update params on the current state of a resource whose `PUT`
+ * replaces it whole, so callers can send only the fields they change.
+ * `undefined` values in `params` keep the current value; keys in `omit`
+ * (read-only or server-owned fields) are dropped from `current`.
+ */
+export function mergeForReplace(
+  current: object,
+  params: object,
+  omit: readonly string[] = [],
+): Params {
+  const out: Params = {};
+  for (const [key, value] of Object.entries(current)) {
+    if (value !== undefined && !omit.includes(key)) out[key] = value;
+  }
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined) out[key] = value;
+  }
+  return out;
 }
 
 function applyAliases(params: object, aliases: Record<string, string>): Params {

@@ -1,6 +1,8 @@
 import type { HttpClient } from "../http.js";
+import { WebhookRelayAPIError } from "../errors.js";
 import {
   managedServiceParams,
+  mergeForReplace,
   serviceConnectionParams,
 } from "../params.js";
 import type {
@@ -10,6 +12,26 @@ import type {
   ServiceConnectionOutput,
   UpdateServiceConnectionParams,
 } from "../types.js";
+
+/** Server-owned fields left out of managed input/output replace bodies. */
+const MANAGED_READ_ONLY = [
+  "id",
+  "bucket_id",
+  "status",
+  "error",
+  "created_at",
+  "updated_at",
+] as const;
+
+function notFound(kind: string, id: string, bucketId: string): WebhookRelayAPIError {
+  return new WebhookRelayAPIError({
+    status: 404,
+    method: "PUT",
+    path: `/v1/buckets/{id}/${kind.replace(/ /g, "-")}s/{detailed}`,
+    body: undefined,
+    message: `${kind} '${id}' not found in bucket '${bucketId}'`,
+  });
+}
 
 /**
  * Manage service connections — credentials for managed cloud integrations
@@ -62,15 +84,21 @@ export class ServiceConnectionsResource {
     );
   }
 
-  /** Update a service connection. */
-  update(
+  /**
+   * Update a service connection. Credential fields you omit are kept. The API
+   * always replaces the name (and rejects an empty one), so when `name` is
+   * omitted the current name is fetched and sent.
+   */
+  async update(
     id: string,
     params: UpdateServiceConnectionParams,
   ): Promise<ServiceConnection> {
+    const body = serviceConnectionParams(params);
+    if (body.name === undefined) body.name = (await this.get(id)).name;
     return this.http.unwrap(
       this.http.api.v1.serviceConnectionsUpdate(
         encodeURIComponent(id),
-        serviceConnectionParams(params) as never,
+        body as never,
       ),
       "PUT",
       "/v1/service-connections/{id}",
@@ -114,17 +142,23 @@ export class ServiceConnectionsResource {
     );
   }
 
-  /** Update a service-connection input. */
-  updateInput(
+  /**
+   * Update a service-connection input. Only the fields you pass change: the
+   * API's `PUT` replaces the whole input, so the current one is read from
+   * {@link listInputs} first and `params` are merged over it.
+   */
+  async updateInput(
     bucketId: string,
     inputId: string,
     params: Partial<ServiceConnectionInput>,
   ): Promise<ServiceConnectionInput> {
+    const current = (await this.listInputs(bucketId)).find((i) => i.id === inputId);
+    if (!current) throw notFound("service-connection input", inputId, bucketId);
     return this.http.unwrap(
       this.http.api.v1.bucketsServiceConnectionInputsUpdate(
         encodeURIComponent(bucketId),
         encodeURIComponent(inputId),
-        managedServiceParams(params) as never,
+        mergeForReplace(current, managedServiceParams(params), MANAGED_READ_ONLY) as never,
       ),
       "PUT",
       "/v1/buckets/{id}/service-connection-inputs/{inputId}",
@@ -173,17 +207,23 @@ export class ServiceConnectionsResource {
     );
   }
 
-  /** Update a service-connection output. */
-  updateOutput(
+  /**
+   * Update a service-connection output. Only the fields you pass change: the
+   * API's `PUT` replaces the whole output, so the current one is read from
+   * {@link listOutputs} first and `params` are merged over it.
+   */
+  async updateOutput(
     bucketId: string,
     outputId: string,
     params: Partial<ServiceConnectionOutput>,
   ): Promise<ServiceConnectionOutput> {
+    const current = (await this.listOutputs(bucketId)).find((o) => o.id === outputId);
+    if (!current) throw notFound("service-connection output", outputId, bucketId);
     return this.http.unwrap(
       this.http.api.v1.bucketsServiceConnectionOutputsUpdate(
         encodeURIComponent(bucketId),
         encodeURIComponent(outputId),
-        managedServiceParams(params) as never,
+        mergeForReplace(current, managedServiceParams(params), MANAGED_READ_ONLY) as never,
       ),
       "PUT",
       "/v1/buckets/{id}/service-connection-outputs/{outputId}",
