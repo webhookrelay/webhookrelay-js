@@ -287,11 +287,16 @@ let task = await relay.outbound.imports.start({
     paused: true,
   }],
 }, { timeoutMs: 120_000 }); // a large import can outlast the default timeout
-while (!isOutboundImportDone(task)) {
+while (!isOutboundImportDone(task)) { // bound the wait, e.g. with a deadline
   await new Promise((resolve) => setTimeout(resolve, 2_000));
   task = await relay.outbound.imports.get(task.id);
 }
-// task.status: completed | failed; task.endpoints: { total, created, unchanged }
+if (task.status === "failed") {
+  // task.errors lists refused items when nothing was written; otherwise
+  // task.error names the item that stopped it, and starting it again resumes it.
+  throw new Error(`import ${task.id} failed: ${task.error}`);
+}
+// task.endpoints: { total, created, unchanged }
 ```
 
 The whole import is validated before anything is written: invalid items fail

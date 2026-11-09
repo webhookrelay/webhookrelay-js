@@ -90,6 +90,7 @@ function isItemError(value: unknown): value is OutboundImportItemError {
     typeof item.kind === "string" &&
     item.kind !== "" &&
     typeof item.index === "number" &&
+    (item.key === undefined || typeof item.key === "string") &&
     typeof item.error === "string" &&
     item.error !== ""
   );

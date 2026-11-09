@@ -800,6 +800,7 @@ export interface OutboundImportEndpoint extends Omit<OutboundEndpointCreateParam
  * import.
  */
 export interface OutboundImportRequest {
+  /** Either spelling; when both are set, the one listed first is sent. */
   event_types?: OutboundImportEventType[];
   eventTypes?: OutboundImportEventType[];
   consumers?: OutboundImportConsumer[];
@@ -856,10 +857,16 @@ export interface OutboundImportTask {
   consumers: OutboundImportCounts;
   endpoints: OutboundImportCounts;
   /**
-   * Items that failed validation in the background (an endpoint host that
-   * resolves to a private address); nothing was written then.
+   * Items the background validation refused (an endpoint host that resolves
+   * to a private address, a Function deleted since the import started);
+   * nothing was written then.
    */
   errors?: OutboundImportItemError[];
+  /**
+   * Why a failed import stopped. When `errors` is empty, the items before the
+   * one that stopped it may already exist; starting the same import again
+   * resumes it.
+   */
   error?: string;
   created_at?: string;
   updated_at?: string;

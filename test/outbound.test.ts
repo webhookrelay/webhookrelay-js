@@ -400,6 +400,30 @@ describe("outbound", () => {
     }
   });
 
+  it("runs the import example to a failure", async () => {
+    const { relay } = createClient(() => ({
+      json: { id: "import-1", status: "failed", error: "1 invalid item(s)", errors: [{ kind: "endpoint", index: 0, error: "resolves to 10.0.0.5" }] },
+    }));
+
+    await expect(importCustomers(relay, "https://customer.example/webhooks", { pollMs: 0 })).rejects.toThrow("import import-1 failed: 1 invalid item(s)");
+  });
+
+  it("stops the import example when its signal aborts", async () => {
+    const { relay } = createClient((_url, method) =>
+      method === "POST" ? { status: 202, json: { id: "import-1", status: "pending" } } : { json: { id: "import-1", status: "running" } },
+    );
+
+    await expect(importCustomers(relay, "https://customer.example/webhooks", { pollMs: 1, signal: AbortSignal.timeout(30) })).rejects.toThrow();
+  });
+
+  it("lists no item errors when a key is not a string", async () => {
+    const { relay } = createClient(() => ({ status: 400, json: { error: "bad", errors: [{ kind: "endpoint", index: 0, key: 42, error: "x" }] } }));
+
+    const err = (await relay.outbound.imports.start({}).catch((e: unknown) => e)) as WebhookRelayAPIError;
+
+    expect(err.itemErrors).toEqual([]);
+  });
+
   it("runs the import example", async () => {
     let polls = 0;
     const { relay, calls } = createClient((_url, method) => {
@@ -408,7 +432,7 @@ describe("outbound", () => {
       return { json: { id: "import-1", status: polls < 2 ? "running" : "completed", endpoints: { total: 1, created: 1, unchanged: 0 } } };
     });
 
-    const task = await importCustomers(relay, "https://customer.example/webhooks", 0);
+    const task = await importCustomers(relay, "https://customer.example/webhooks", { pollMs: 0 });
 
     expect(task.status).toBe("completed");
     expect(requests(calls)).toEqual(["POST /v1/outbound/imports", "GET /v1/outbound/imports/import-1", "GET /v1/outbound/imports/import-1"]);

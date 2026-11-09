@@ -328,7 +328,7 @@ export class OutboundRecoveryTasksResource {
   }
 }
 
-/** Per-call cancellation and timeout for bulk import calls. */
+/** Per-call cancellation and timeout for bulk import calls. `timeoutMs: 0` disables the timeout. */
 export type OutboundImportCallOptions = Pick<RequestOptions, "signal" | "timeoutMs">;
 
 /**
@@ -358,7 +358,8 @@ export class OutboundImportsResource {
    *
    * Sending the same import again while it runs returns the running task, so
    * retrying after a timeout or connection error is safe. If it already
-   * finished, the retry starts a new import that finds every item unchanged.
+   * finished, the retry starts a new import, which finds the items of a
+   * completed one unchanged and resumes a failed one.
    * A large import can take longer to upload and validate than the client's
    * default timeout; raise it per call with `options.timeoutMs`.
    *
