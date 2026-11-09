@@ -267,6 +267,33 @@ const failing = await relay.outbound.endpoints.listAll({ state: "failing", limit
 for (const e of failing) console.log(e.consumer, e.url, e.failing_since, e.stats?.failures);
 ```
 
+Migrating from another webhook sender (Svix, Hookdeck Outpost, ...)? Import
+event types, consumers and endpoints in bulk, up to 5000 items per import.
+Endpoints keep their existing signing `secret`, and `paused: true` holds
+deliveries until you cut over and resume them. Items that already exist are
+left unchanged, so re-running an import is safe:
+
+```ts
+let task = await relay.outbound.imports.start({
+  eventTypes: [{ name: "invoice.paid" }],
+  consumers: [{ id: "customer_42", name: "Acme" }],
+  endpoints: [{
+    consumer: "customer_42",
+    url: "https://customer.example/webhooks",
+    eventTypes: ["invoice.paid"],
+    secret: "whsec_...",
+    paused: true,
+  }],
+});
+task = await relay.outbound.imports.get(task.id);
+// task.status: pending | validating | running | completed | failed
+// task.endpoints: { total, created, unchanged }
+```
+
+The whole import is validated before anything is written: invalid items fail
+the call with a 400 whose `err.itemErrors` lists each `{ kind, index, key, error }`.
+Only one import runs at a time (409 otherwise).
+
 A runnable version lives in [`examples/outbound.ts`](./examples/outbound.ts).
 
 ## Receiving webhooks

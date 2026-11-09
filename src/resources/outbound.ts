@@ -1,5 +1,5 @@
 import type { HttpClient } from "../http.js";
-import { outboundEndpointParams, outboundMessageParams } from "../params.js";
+import { outboundEndpointParams, outboundImportParams, outboundMessageParams } from "../params.js";
 import type {
   ListAllOutboundEndpointsParams,
   ListOutboundDeliveriesParams,
@@ -13,6 +13,8 @@ import type {
   OutboundEndpointWithSecret,
   OutboundEventType,
   OutboundHealth,
+  OutboundImportRequest,
+  OutboundImportTask,
   OutboundMessage,
   OutboundRecoveryParams,
   OutboundRecoveryTask,
@@ -327,6 +329,50 @@ export class OutboundRecoveryTasksResource {
 }
 
 /**
+ * Bulk import of event types, consumers and endpoints, for migrations from
+ * another webhook sender (Svix, Hookdeck Outpost, ...).
+ */
+export class OutboundImportsResource {
+  constructor(private readonly http: HttpClient) {}
+
+  /**
+   * Validate the whole import, then create its items in the background.
+   * Items that already exist (event types by name, consumers by ID, endpoints
+   * by URL or destination per consumer) are left unchanged, so re-running an
+   * import is safe. At most 5000 items and 10 MiB per import, one import at a
+   * time.
+   *
+   * Throws {@link WebhookRelayAPIError}: 400 with the invalid items in
+   * `itemErrors` (nothing was written), 409 while another import is running,
+   * 413 when the request is too large.
+   *
+   * ```ts
+   * const task = await relay.outbound.imports.start({
+   *   eventTypes: [{ name: "invoice.paid" }],
+   *   consumers: [{ id: "customer_42", name: "Acme" }],
+   *   endpoints: [{
+   *     consumer: "customer_42",
+   *     url: "https://customer.example/webhooks",
+   *     eventTypes: ["invoice.paid"],
+   *     secret: "whsec_...", // keep the consumer's existing signing secret
+   *     paused: true,        // resume after the cutover
+   *   }],
+   * });
+   * ```
+   */
+  start(request: OutboundImportRequest): Promise<OutboundImportTask> {
+    return this.http.request<OutboundImportTask>("POST", "/v1/outbound/imports", {
+      body: outboundImportParams(request),
+    });
+  }
+
+  /** Get an import's progress by ID. */
+  get(id: string): Promise<OutboundImportTask> {
+    return this.http.request<OutboundImportTask>("GET", `/v1/outbound/imports/${segment(id)}`);
+  }
+}
+
+/**
  * Outbound webhooks (pilot): send signed webhooks to your own customers.
  * Register each customer as a consumer with the HTTPS endpoints they give
  * you, then publish messages. Webhook Relay signs every delivery (Standard
@@ -338,6 +384,7 @@ export class OutboundResource {
   readonly endpoints: OutboundEndpointsResource;
   readonly messages: OutboundMessagesResource;
   readonly recoveryTasks: OutboundRecoveryTasksResource;
+  readonly imports: OutboundImportsResource;
 
   constructor(private readonly http: HttpClient) {
     this.consumers = new OutboundConsumersResource(http);
@@ -345,6 +392,7 @@ export class OutboundResource {
     this.endpoints = new OutboundEndpointsResource(http);
     this.messages = new OutboundMessagesResource(http);
     this.recoveryTasks = new OutboundRecoveryTasksResource(http);
+    this.imports = new OutboundImportsResource(http);
   }
 
   /**

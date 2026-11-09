@@ -95,6 +95,17 @@ export function outboundMessageParams<T extends object>(params: T): T {
   return applyAliases(params, outboundMessageAliases) as T;
 }
 
+const outboundImportAliases: Record<string, string> = {
+  eventTypes: "event_types",
+};
+
+/** Normalize a bulk import, including each endpoint's camelCase fields. */
+export function outboundImportParams<T extends { endpoints?: object[] }>(params: T): Params {
+  const out = applyAliases(params, outboundImportAliases);
+  if (params.endpoints) out.endpoints = params.endpoints.map((e) => outboundEndpointParams(e));
+  return out;
+}
+
 /**
  * Overlay update params on the current state of a resource whose `PUT`
  * replaces it whole, so callers can send only the fields they change.

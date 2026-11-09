@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createClient } from "./helpers.js";
+import { WebhookRelayAPIError } from "../src/index.js";
 import { onboardCustomer, publishInvoicePaid, reportFailingEndpoints } from "../examples/outbound.js";
 
 const base = "https://my.webhookrelay.com";
@@ -198,6 +199,104 @@ describe("outbound", () => {
     expect(health).toEqual(body);
     expect(health.endpoints.failing).toBe(1);
     expect(health.stats.failures).toBe(9);
+  });
+
+  it("starts a bulk import with camelCase or snake_case params", async () => {
+    const task = {
+      id: "import-1",
+      status: "pending",
+      total: 3,
+      processed: 0,
+      event_types: { total: 1, created: 0, unchanged: 0 },
+      consumers: { total: 1, created: 0, unchanged: 0 },
+      endpoints: { total: 1, created: 0, unchanged: 0 },
+      created_at: "2026-11-09T10:00:00Z",
+    };
+    const { relay, calls } = createClient((url, method) =>
+      method === "POST" ? { status: 202, json: task } : { json: { ...task, status: "completed", processed: 3 } },
+    );
+
+    const started = await relay.outbound.imports.start({
+      eventTypes: [{ name: "invoice.paid", description: "Paid", example: { id: 1 }, deprecated: false }],
+      consumers: [{ id: "customer_42", name: "Acme", rate: 5 }],
+      endpoints: [
+        {
+          consumer: "customer_42",
+          url: "https://customer.example/webhooks",
+          eventTypes: ["invoice.paid"],
+          autoDisable: true,
+          functionId: "fn-1",
+          secret: "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw",
+          headers: { "X-Env": "prod" },
+          paused: true,
+        },
+        {
+          consumer: "customer_42",
+          type: "aws_sqs",
+          destination: { aws_sqs: { queue_url: "https://sqs.eu-west-1.amazonaws.com/1/orders" } },
+          credentials: { aws: { access_key_id: "AKIA", secret_access_key: "s3cr3t" } },
+          event_types: ["*"],
+        },
+      ],
+    });
+    const done = await relay.outbound.imports.get("import/1");
+
+    expect(requests(calls)).toEqual(["POST /v1/outbound/imports", "GET /v1/outbound/imports/import%2F1"]);
+    expect(calls[0]?.body).toEqual({
+      event_types: [{ name: "invoice.paid", description: "Paid", example: { id: 1 }, deprecated: false }],
+      consumers: [{ id: "customer_42", name: "Acme", rate: 5 }],
+      endpoints: [
+        {
+          consumer: "customer_42",
+          url: "https://customer.example/webhooks",
+          event_types: ["invoice.paid"],
+          auto_disable: true,
+          function_id: "fn-1",
+          secret: "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw",
+          headers: { "X-Env": "prod" },
+          paused: true,
+        },
+        {
+          consumer: "customer_42",
+          type: "aws_sqs",
+          destination: { aws_sqs: { queue_url: "https://sqs.eu-west-1.amazonaws.com/1/orders" } },
+          credentials: { aws: { access_key_id: "AKIA", secret_access_key: "s3cr3t" } },
+          event_types: ["*"],
+        },
+      ],
+    });
+    expect(started).toEqual(task);
+    expect(started.event_types.total).toBe(1);
+    expect(done.status).toBe("completed");
+    expect(done.processed).toBe(3);
+  });
+
+  it("exposes the invalid items of a refused import", async () => {
+    const itemErrors = [
+      { kind: "endpoint", index: 0, key: "customer_42 http://x", error: "url must use https" },
+      { kind: "consumer", index: 2, key: "", error: "id is required" },
+    ];
+    const { relay } = createClient(() => ({
+      status: 400,
+      json: { error: "2 invalid import items", errors: itemErrors },
+    }));
+
+    const err = await relay.outbound.imports.start({ consumers: [{ id: "" }] }).catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(WebhookRelayAPIError);
+    const apiErr = err as WebhookRelayAPIError;
+    expect(apiErr.status).toBe(400);
+    expect(apiErr.message).toContain("2 invalid import items");
+    expect(apiErr.itemErrors).toEqual(itemErrors);
+  });
+
+  it("reports no item errors for a conflicting import", async () => {
+    const { relay } = createClient(() => ({ status: 409, json: { error: "another import is running" } }));
+
+    const err = (await relay.outbound.imports.start({}).catch((e: unknown) => e)) as WebhookRelayAPIError;
+
+    expect(err.status).toBe(409);
+    expect(err.itemErrors).toEqual([]);
   });
 
   it("runs the failing-endpoints example", async () => {

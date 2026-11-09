@@ -1,3 +1,5 @@
+import type { OutboundImportItemError } from "./types.js";
+
 /**
  * Base class for every error thrown by the SDK. Catch this to handle any
  * Webhook Relay failure in one place.
@@ -63,6 +65,15 @@ export class WebhookRelayAPIError extends WebhookRelayError {
   /** True for 404 (not found). */
   get isNotFound(): boolean {
     return this.status === 404;
+  }
+
+  /**
+   * The per-item errors of a refused request, such as the invalid items of an
+   * outbound bulk import (400, nothing written). Empty when the body lists none.
+   */
+  get itemErrors(): OutboundImportItemError[] {
+    const errors = (this.body as { errors?: unknown } | null)?.errors;
+    return Array.isArray(errors) ? (errors as OutboundImportItemError[]) : [];
   }
 }
 
