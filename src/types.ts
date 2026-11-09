@@ -808,7 +808,10 @@ export interface OutboundImportRequest {
 
 /**
  * Why one item, or the import as a whole (`kind: "limit"`, `index: -1`), was
- * refused. `key` names the item; secrets and credentials are never included.
+ * refused. `key` names the item: an event type's name, a consumer's ID, or an
+ * endpoint's consumer and URL (for a limit, the list or consumer). Signing
+ * secrets and cloud credentials are never included, but an endpoint's URL may
+ * itself be sensitive, so log keys with care.
  */
 export interface OutboundImportItemError {
   /** One of these, or a kind added to the API after this SDK. */
@@ -827,10 +830,19 @@ export interface OutboundImportCounts {
 }
 
 /**
- * `validating` checks every item again, including that endpoint hosts are
- * public, before anything is written; `running` creates items.
+ * `pending`, `validating` (every item is checked again, including that
+ * endpoint hosts are public, before anything is written) and `running`
+ * (creating items) mean the import is still working; `completed` and `failed`
+ * are final, as is any status added after this SDK. Use
+ * {@link isOutboundImportDone} rather than comparing statuses.
  */
-export type OutboundImportStatus = "pending" | "validating" | "running" | "completed" | "failed";
+export type OutboundImportStatus =
+  | "pending"
+  | "validating"
+  | "running"
+  | "completed"
+  | "failed"
+  | (string & {});
 
 /** A bulk import running in the background. */
 export interface OutboundImportTask {

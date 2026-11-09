@@ -69,10 +69,11 @@ export class WebhookRelayAPIError extends WebhookRelayError {
 
   /**
    * The per-item errors of a refused request, such as the invalid items of an
-   * outbound bulk import (400, nothing written): up to 100 of them, sorted by
-   * kind and position; `message` gives the total. Empty when the body lists
-   * none, or lists errors of another shape. Kinds the server adds later are
-   * kept, so an older SDK still lists them.
+   * outbound bulk import (400, nothing written; see `outbound.imports.start`).
+   * Empty when the body lists none (an empty or oversized import is refused
+   * with only `message`) or lists errors of another shape; `message` always
+   * says why. Kinds the server adds later are kept, so an older SDK still
+   * lists them.
    */
   get itemErrors(): OutboundImportItemError[] {
     const errors = (this.body as { errors?: unknown } | null)?.errors;
@@ -89,7 +90,8 @@ function isItemError(value: unknown): value is OutboundImportItemError {
     typeof item.kind === "string" &&
     item.kind !== "" &&
     typeof item.index === "number" &&
-    typeof item.error === "string"
+    typeof item.error === "string" &&
+    item.error !== ""
   );
 }
 

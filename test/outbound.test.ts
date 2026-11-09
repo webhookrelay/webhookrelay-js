@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createClient } from "./helpers.js";
-import { WebhookRelay, WebhookRelayAPIError, WebhookRelayConnectionError } from "../src/index.js";
-import { onboardCustomer, publishInvoicePaid, reportFailingEndpoints } from "../examples/outbound.js";
+import { isOutboundImportDone, WebhookRelay, WebhookRelayAPIError, WebhookRelayConnectionError } from "../src/index.js";
+import { importCustomers, onboardCustomer, publishInvoicePaid, reportFailingEndpoints } from "../examples/outbound.js";
 
 const base = "https://my.webhookrelay.com";
 const requests = (calls: { method: string; url: string }[]) =>
@@ -334,7 +334,7 @@ describe("outbound", () => {
   it("lists no item errors when one has another shape", async () => {
     const { relay } = createClient(() => ({
       status: 400,
-      json: { error: "bad", errors: [{ kind: "endpoint", index: 0, error: "bad url" }, { code: "bad_gateway" }] },
+      json: { error: "bad", errors: [{ kind: "endpoint", index: 0, error: "bad url" }, { kind: "endpoint", index: 1, error: "" }] },
     }));
 
     const err = (await relay.outbound.imports.start({}).catch((e: unknown) => e)) as WebhookRelayAPIError;
@@ -364,12 +364,55 @@ describe("outbound", () => {
     expect(task.errors?.[0]?.index).toBe(0);
   });
 
-  it("lets a large import raise the client's timeout per call", async () => {
+  it("applies a per-call timeout over the client default", async () => {
     const relay = new WebhookRelay({ apiKey: "sk-test", fetch: hangingFetch, timeoutMs: 60_000 });
 
     const err = await relay.outbound.imports.start({}, { timeoutMs: 5 }).catch((e: unknown) => e);
 
     expect(err).toBeInstanceOf(WebhookRelayConnectionError);
+  });
+
+  it("lets a large import outlast the client's default timeout", async () => {
+    const slow = ((_input: unknown, init: RequestInit = {}) =>
+      new Promise((resolve, reject) => {
+        const timer = setTimeout(
+          () => resolve(new Response(JSON.stringify({ id: "import-1", status: "pending" }), { status: 202 })),
+          50,
+        );
+        init.signal?.addEventListener("abort", () => {
+          clearTimeout(timer);
+          reject(new DOMException("aborted", "AbortError"));
+        });
+      })) as typeof fetch;
+    const relay = new WebhookRelay({ apiKey: "sk-test", fetch: slow, timeoutMs: 5 });
+
+    const task = await relay.outbound.imports.start({}, { timeoutMs: 5_000 });
+
+    expect(task.id).toBe("import-1");
+  });
+
+  it("treats every status but pending, validating and running as final", () => {
+    for (const status of ["pending", "validating", "running", ""]) {
+      expect(isOutboundImportDone({ status })).toBe(false);
+    }
+    for (const status of ["completed", "failed", "cancelled"]) {
+      expect(isOutboundImportDone({ status })).toBe(true);
+    }
+  });
+
+  it("runs the import example", async () => {
+    let polls = 0;
+    const { relay, calls } = createClient((_url, method) => {
+      if (method === "POST") return { status: 202, json: { id: "import-1", status: "pending" } };
+      polls++;
+      return { json: { id: "import-1", status: polls < 2 ? "running" : "completed", endpoints: { total: 1, created: 1, unchanged: 0 } } };
+    });
+
+    const task = await importCustomers(relay, "https://customer.example/webhooks", 0);
+
+    expect(task.status).toBe("completed");
+    expect(requests(calls)).toEqual(["POST /v1/outbound/imports", "GET /v1/outbound/imports/import-1", "GET /v1/outbound/imports/import-1"]);
+    expect(calls[0]?.body).toMatchObject({ endpoints: [{ consumer: "customer_42", paused: true, event_types: ["invoice.paid"] }] });
   });
 
   it("cancels an import call with the caller's signal", async () => {

@@ -274,6 +274,8 @@ deliveries until you cut over and resume them. Items that already exist are
 left unchanged, so re-running an import is safe:
 
 ```ts
+import { isOutboundImportDone } from "@webhookrelay/sdk";
+
 let task = await relay.outbound.imports.start({
   eventTypes: [{ name: "invoice.paid" }],
   consumers: [{ id: "customer_42", name: "Acme" }],
@@ -285,20 +287,23 @@ let task = await relay.outbound.imports.start({
     paused: true,
   }],
 }, { timeoutMs: 120_000 }); // a large import can outlast the default timeout
-task = await relay.outbound.imports.get(task.id);
-// task.status: pending | validating | running | completed | failed
-// task.endpoints: { total, created, unchanged }
+while (!isOutboundImportDone(task)) {
+  await new Promise((resolve) => setTimeout(resolve, 2_000));
+  task = await relay.outbound.imports.get(task.id);
+}
+// task.status: completed | failed; task.endpoints: { total, created, unchanged }
 ```
 
 The whole import is validated before anything is written: invalid items fail
 the call with a 400 whose `err.itemErrors` lists up to 100 of them as
-`{ kind, index, key, error }` (`err.message` gives the total). Only one import
-runs at a time: sending the same import again while it runs returns the
-running task, so retrying after a timeout is safe; a different import gets a
-409.
+`{ kind, index, key, error }` (`err.message` gives the total, and the reason
+when the import as a whole is refused). Only one import runs at a time:
+sending the same import again while it runs returns the running task, so
+retrying after a timeout is safe; a different import gets a 409. Item keys
+name endpoints by URL, which may be sensitive, so log them with care.
 
-A runnable version of the publishing and health examples lives in
-[`examples/outbound.ts`](./examples/outbound.ts).
+Runnable versions of these examples, the import included (`importCustomers`),
+live in [`examples/outbound.ts`](./examples/outbound.ts).
 
 ## Receiving webhooks
 

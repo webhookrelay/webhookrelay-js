@@ -332,8 +332,19 @@ export class OutboundRecoveryTasksResource {
 export type OutboundImportCallOptions = Pick<RequestOptions, "signal" | "timeoutMs">;
 
 /**
+ * Reports whether an import has finished: any status but `pending`,
+ * `validating` and `running` is final, including statuses added after this
+ * SDK. A task without a status is not finished.
+ */
+export function isOutboundImportDone(task: Pick<OutboundImportTask, "status">): boolean {
+  return !!task.status && !["pending", "validating", "running"].includes(task.status);
+}
+
+/**
  * Bulk import of event types, consumers and endpoints, for migrations from
- * another webhook sender (Svix, Hookdeck Outpost, ...).
+ * another webhook sender (Svix, Hookdeck Outpost, ...). The generated client
+ * does not cover /v1/outbound/imports yet, so these call the path directly;
+ * switch to it when it is regenerated.
  */
 export class OutboundImportsResource {
   constructor(private readonly http: HttpClient) {}
@@ -343,16 +354,20 @@ export class OutboundImportsResource {
    * Items that already exist (event types by name, consumers by ID, endpoints
    * by URL or destination per consumer) are left unchanged, so re-running an
    * import is safe. At most 5000 items and 10 MiB per import, one import at a
-   * time. Sending the same import again while it runs returns the running
-   * task, so retrying after a timeout or connection error is safe.
+   * time.
    *
+   * Sending the same import again while it runs returns the running task, so
+   * retrying after a timeout or connection error is safe. If it already
+   * finished, the retry starts a new import that finds every item unchanged.
    * A large import can take longer to upload and validate than the client's
    * default timeout; raise it per call with `options.timeoutMs`.
    *
    * Throws {@link WebhookRelayAPIError}: 400 with up to 100 of the invalid
-   * items in `itemErrors` (nothing was written; the message gives the total),
-   * 409 while a different import is running, 413 when the request is too
-   * large.
+   * items in `itemErrors` (nothing was written; the message gives the total
+   * and the reason when no item is at fault), 409 while a different import is
+   * running, 413 when the request is too large. Poll {@link get} until
+   * {@link isOutboundImportDone}; `examples/outbound.ts` (`importCustomers`)
+   * shows the whole flow.
    *
    * ```ts
    * const task = await relay.outbound.imports.start({
@@ -368,19 +383,20 @@ export class OutboundImportsResource {
    * }, { timeoutMs: 120_000 });
    * ```
    */
-  start(request: OutboundImportRequest, options: OutboundImportCallOptions = {}): Promise<OutboundImportTask> {
+  start(request: OutboundImportRequest, { signal, timeoutMs }: OutboundImportCallOptions = {}): Promise<OutboundImportTask> {
     return this.http.request<OutboundImportTask>("POST", "/v1/outbound/imports", {
-      ...options,
+      signal,
+      timeoutMs,
       body: outboundImportParams(request),
     });
   }
 
   /**
-   * Get an import's progress by ID. Poll until its status is `completed` or
-   * `failed`; `pending`, `validating` and `running` are still working.
+   * Get an import's progress by ID. Poll every few seconds until
+   * {@link isOutboundImportDone}.
    */
-  get(id: string, options: OutboundImportCallOptions = {}): Promise<OutboundImportTask> {
-    return this.http.request<OutboundImportTask>("GET", `/v1/outbound/imports/${segment(id)}`, options);
+  get(id: string, { signal, timeoutMs }: OutboundImportCallOptions = {}): Promise<OutboundImportTask> {
+    return this.http.request<OutboundImportTask>("GET", `/v1/outbound/imports/${segment(id)}`, { signal, timeoutMs });
   }
 }
 

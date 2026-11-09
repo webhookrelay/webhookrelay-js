@@ -32,6 +32,8 @@ export function publishInvoicePaid(relay: WebhookRelay) {
 }
 // dashboard-snippet:end
 
+import { isOutboundImportDone, WebhookRelayAPIError } from "@webhookrelay/sdk";
+
 // Find customers whose endpoints are failing, longest failing first.
 export async function reportFailingEndpoints(relay: WebhookRelay) {
   const health = await relay.outbound.health();
@@ -45,6 +47,26 @@ export async function reportFailingEndpoints(relay: WebhookRelay) {
   }));
 }
 
+// Migrating from another sender: import customers in one request, then wait
+// for it. A refused import throws a WebhookRelayAPIError listing the items to
+// fix in itemErrors; nothing was written.
+export async function importCustomers(relay: WebhookRelay, customerURL: string, pollMs = 2_000) {
+  let task = await relay.outbound.imports.start(
+    {
+      eventTypes: [{ name: "invoice.paid" }],
+      consumers: [{ id: "customer_42", name: "Acme" }],
+      // Paused until the cutover; resume each consumer's endpoints after it.
+      endpoints: [{ consumer: "customer_42", url: customerURL, eventTypes: ["invoice.paid"], paused: true }],
+    },
+    { timeoutMs: 120_000 }, // a large import can outlast the default timeout
+  );
+  while (!isOutboundImportDone(task)) {
+    await new Promise((resolve) => setTimeout(resolve, pollMs));
+    task = await relay.outbound.imports.get(task.id);
+  }
+  return task;
+}
+
 async function main() {
   const customerURL = process.env.CUSTOMER_WEBHOOK_URL;
   if (!customerURL) throw new Error("set CUSTOMER_WEBHOOK_URL");
@@ -54,6 +76,14 @@ async function main() {
   const message = await publishInvoicePaid(relay);
   console.log("message:", message.id, "->", message.endpoint_ids.length, "endpoint(s)");
   console.log("failing endpoints:", await reportFailingEndpoints(relay));
+  try {
+    const imported = await importCustomers(relay, customerURL);
+    console.log("import:", imported.status, imported.endpoints, imported.error ?? "");
+  } catch (err) {
+    if (!(err instanceof WebhookRelayAPIError)) throw err;
+    console.error(err.message);
+    for (const item of err.itemErrors) console.error(`${item.kind} #${item.index} ${item.key ?? ""}: ${item.error}`);
+  }
 }
 
 if (import.meta.filename === process.argv[1]) {
