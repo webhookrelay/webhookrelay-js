@@ -297,7 +297,8 @@ runs at a time: sending the same import again while it runs returns the
 running task, so retrying after a timeout is safe; a different import gets a
 409.
 
-A runnable version lives in [`examples/outbound.ts`](./examples/outbound.ts).
+A runnable version of the publishing and health examples lives in
+[`examples/outbound.ts`](./examples/outbound.ts).
 
 ## Receiving webhooks
 

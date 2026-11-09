@@ -55,6 +55,7 @@ export {
   OutboundMessagesResource,
   OutboundRecoveryTasksResource,
   OutboundImportsResource,
+  type OutboundImportCallOptions,
 } from "./resources/outbound.js";
 
 // Streaming

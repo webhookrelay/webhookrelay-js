@@ -811,7 +811,8 @@ export interface OutboundImportRequest {
  * refused. `key` names the item; secrets and credentials are never included.
  */
 export interface OutboundImportItemError {
-  kind: "event_type" | "consumer" | "endpoint" | "limit";
+  /** One of these, or a kind added to the API after this SDK. */
+  kind: "event_type" | "consumer" | "endpoint" | "limit" | (string & {});
   /** The item's position in its list; -1 for a limit. */
   index: number;
   key?: string;

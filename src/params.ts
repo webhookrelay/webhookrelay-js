@@ -1,3 +1,5 @@
+import type { OutboundImportRequest } from "./types.js";
+
 type Params = Record<string, unknown>;
 
 const bucketAliases: Record<string, string> = {
@@ -58,6 +60,10 @@ const outboundEndpointAliases: Record<string, string> = {
   functionId: "function_id",
 };
 
+const outboundImportAliases: Record<string, string> = {
+  eventTypes: "event_types",
+};
+
 const outboundMessageAliases: Record<string, string> = {
   eventType: "event_type",
   eventId: "event_id",
@@ -95,12 +101,8 @@ export function outboundMessageParams<T extends object>(params: T): T {
   return applyAliases(params, outboundMessageAliases) as T;
 }
 
-const outboundImportAliases: Record<string, string> = {
-  eventTypes: "event_types",
-};
-
 /** Normalize a bulk import, including each endpoint's camelCase fields. */
-export function outboundImportParams(params: { endpoints?: object[] }): Params {
+export function outboundImportParams(params: OutboundImportRequest): Params {
   const out = applyAliases(params, outboundImportAliases);
   if (params.endpoints) out.endpoints = params.endpoints.map((e) => outboundEndpointParams(e));
   return out;

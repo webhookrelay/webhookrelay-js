@@ -328,8 +328,8 @@ export class OutboundRecoveryTasksResource {
   }
 }
 
-/** Per-call cancellation and timeout. */
-type CallOptions = Pick<RequestOptions, "signal" | "timeoutMs">;
+/** Per-call cancellation and timeout for bulk import calls. */
+export type OutboundImportCallOptions = Pick<RequestOptions, "signal" | "timeoutMs">;
 
 /**
  * Bulk import of event types, consumers and endpoints, for migrations from
@@ -368,15 +368,18 @@ export class OutboundImportsResource {
    * }, { timeoutMs: 120_000 });
    * ```
    */
-  start(request: OutboundImportRequest, options: CallOptions = {}): Promise<OutboundImportTask> {
+  start(request: OutboundImportRequest, options: OutboundImportCallOptions = {}): Promise<OutboundImportTask> {
     return this.http.request<OutboundImportTask>("POST", "/v1/outbound/imports", {
       ...options,
       body: outboundImportParams(request),
     });
   }
 
-  /** Get an import's progress by ID. */
-  get(id: string, options: CallOptions = {}): Promise<OutboundImportTask> {
+  /**
+   * Get an import's progress by ID. Poll until its status is `completed` or
+   * `failed`; `pending`, `validating` and `running` are still working.
+   */
+  get(id: string, options: OutboundImportCallOptions = {}): Promise<OutboundImportTask> {
     return this.http.request<OutboundImportTask>("GET", `/v1/outbound/imports/${segment(id)}`, options);
   }
 }

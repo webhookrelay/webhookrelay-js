@@ -7,6 +7,14 @@ const base = "https://my.webhookrelay.com";
 const requests = (calls: { method: string; url: string }[]) =>
   calls.map((c) => `${c.method} ${c.url.replace(base, "")}`);
 
+/** A fetch that answers only by failing when its request is aborted. */
+const hangingFetch = ((_input: unknown, init: RequestInit = {}) =>
+  new Promise((_resolve, reject) => {
+    const abort = () => reject(new DOMException("aborted", "AbortError"));
+    if (init.signal?.aborted) abort(); // as fetch does
+    init.signal?.addEventListener("abort", abort);
+  })) as typeof fetch;
+
 describe("outbound", () => {
   it("manages consumers and event types", async () => {
     const { relay, calls } = createClient((url, method) =>
@@ -310,6 +318,30 @@ describe("outbound", () => {
     expect(err.itemErrors).toEqual([]);
   });
 
+  it("keeps item errors of a kind newer than the SDK", async () => {
+    const itemErrors = [
+      { kind: "event_type", index: 0, key: "invoice.paid", error: "listed twice" },
+      { kind: "limit", index: -1, key: "consumers", error: "consumer limit" },
+      { kind: "function", index: 0, error: "a kind the API added later" },
+    ];
+    const { relay } = createClient(() => ({ status: 400, json: { error: "3 invalid import items", errors: itemErrors } }));
+
+    const err = (await relay.outbound.imports.start({}).catch((e: unknown) => e)) as WebhookRelayAPIError;
+
+    expect(err.itemErrors).toEqual(itemErrors);
+  });
+
+  it("lists no item errors when one has another shape", async () => {
+    const { relay } = createClient(() => ({
+      status: 400,
+      json: { error: "bad", errors: [{ kind: "endpoint", index: 0, error: "bad url" }, { code: "bad_gateway" }] },
+    }));
+
+    const err = (await relay.outbound.imports.start({}).catch((e: unknown) => e)) as WebhookRelayAPIError;
+
+    expect(err.itemErrors).toEqual([]);
+  });
+
   it("reads why an import failed in the background", async () => {
     const failed = {
       id: "import-1",
@@ -333,15 +365,21 @@ describe("outbound", () => {
   });
 
   it("lets a large import raise the client's timeout per call", async () => {
-    const hanging = ((_input: unknown, init: RequestInit = {}) =>
-      new Promise((_resolve, reject) => {
-        init.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
-      })) as typeof fetch;
-    const relay = new WebhookRelay({ apiKey: "sk-test", fetch: hanging, timeoutMs: 60_000 });
+    const relay = new WebhookRelay({ apiKey: "sk-test", fetch: hangingFetch, timeoutMs: 60_000 });
 
     const err = await relay.outbound.imports.start({}, { timeoutMs: 5 }).catch((e: unknown) => e);
 
     expect(err).toBeInstanceOf(WebhookRelayConnectionError);
+  });
+
+  it("cancels an import call with the caller's signal", async () => {
+    const relay = new WebhookRelay({ apiKey: "sk-test", fetch: hangingFetch, timeoutMs: 60_000 });
+    const controller = new AbortController();
+
+    const pending = relay.outbound.imports.get("import-1", { signal: controller.signal }).catch((e: unknown) => e);
+    controller.abort();
+
+    expect(await pending).toBeInstanceOf(WebhookRelayConnectionError);
   });
 
   it("runs the failing-endpoints example", async () => {
