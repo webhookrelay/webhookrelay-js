@@ -526,11 +526,51 @@ export interface UpsertOutboundEventTypeParams {
 
 export type OutboundEndpointState = "active" | "failing" | "paused" | "disabled";
 
-/** A consumer's HTTPS destination. */
+/** Where an endpoint delivers: an HTTPS webhook or the consumer's own cloud. */
+export type OutboundEndpointType =
+  | "webhook"
+  | "aws_sqs"
+  | "aws_sns"
+  | "aws_s3"
+  | "gcp_pubsub"
+  | "gcp_gcs";
+
+/**
+ * Configures a cloud endpoint: exactly the block matching its `type`.
+ * Webhooks have none. `endpoint_url` points an AWS destination at an
+ * AWS-compatible service (MinIO, Cloudflare R2, LocalStack). Keys inside the
+ * blocks are the API's snake_case names: camelCase aliases apply only to an
+ * endpoint's top-level fields.
+ */
+export interface OutboundDestination {
+  aws_sqs?: { queue_url: string; region?: string; endpoint_url?: string };
+  aws_sns?: { topic_arn: string; region?: string; endpoint_url?: string };
+  aws_s3?: { bucket: string; region: string; prefix?: string; endpoint_url?: string };
+  /** `topic` is `projects/{project}/topics/{topic}` or a topic ID in the service account's project. */
+  gcp_pubsub?: { topic: string };
+  gcp_gcs?: { bucket: string; prefix?: string };
+}
+
+/**
+ * Credentials for a cloud endpoint, with snake_case keys as in
+ * {@link OutboundDestination}. Write-only: stored encrypted, never returned.
+ */
+export interface OutboundEndpointCredentials {
+  aws?: { access_key_id: string; secret_access_key: string };
+  /** `service_account_key` is the service account's JSON key file. */
+  gcp?: { service_account_key: string };
+}
+
+/** A consumer's destination: an HTTPS URL or a cloud destination. */
 export interface OutboundEndpoint {
   id: string;
   consumer: string;
+  /** Absent or `webhook` for HTTPS endpoints. */
+  type?: OutboundEndpointType;
+  /** The webhook URL; for a cloud endpoint, the target derived from its destination. */
   url: string;
+  /** Set for cloud endpoints. Credentials are write-only and never returned. */
+  destination?: OutboundDestination;
   description?: string;
   event_types: string[];
   headers?: Record<string, string>;
@@ -711,4 +751,124 @@ export interface OutboundRecoveryTask {
   error?: string;
   created_at?: string;
   updated_at?: string;
+}
+
+// Bulk import ----------------------------------------------------------------
+
+/** An event type to create unless one with its name exists. */
+export interface OutboundImportEventType {
+  name: string;
+  description?: string;
+  example?: unknown;
+  deprecated?: boolean;
+}
+
+/** A consumer to create unless one with its ID exists. */
+export interface OutboundImportConsumer {
+  id: string;
+  name?: string;
+  /** Default deliveries per second for its endpoints; 0 means 50. */
+  rate?: number;
+}
+
+/**
+ * An endpoint to create for a consumer unless the consumer already has one
+ * with the same URL or cloud destination.
+ */
+export interface OutboundImportEndpoint extends Omit<OutboundEndpointCreateParams, "url"> {
+  /** The consumer's ID; it may be created by the same import. */
+  consumer: string;
+  /** Defaults to `webhook`. */
+  type?: OutboundEndpointType;
+  /** Public HTTPS URL; required for webhooks. */
+  url?: string;
+  /** Required for cloud endpoints. */
+  destination?: OutboundDestination;
+  credentials?: OutboundEndpointCredentials;
+  /**
+   * Create the endpoint paused, for a cutover: publish to both senders, then
+   * resume each consumer's endpoints. Messages published while it is paused
+   * are recorded as skipped.
+   */
+  paused?: boolean;
+}
+
+/**
+ * Event types, consumers and endpoints to import, at most 5000 items and
+ * 10 MiB together. Event types are created first, then consumers, then
+ * endpoints, so endpoints may name consumers and event types from the same
+ * import.
+ */
+export interface OutboundImportRequest {
+  /** Either spelling; when both are set, the one listed first is sent. */
+  event_types?: OutboundImportEventType[];
+  eventTypes?: OutboundImportEventType[];
+  consumers?: OutboundImportConsumer[];
+  endpoints?: OutboundImportEndpoint[];
+}
+
+/**
+ * Why one item, or the import as a whole (`kind: "limit"`, `index: -1`), was
+ * refused. `key` names the item: an event type's name, a consumer's ID, or an
+ * endpoint's consumer and URL (for a limit, the list or consumer). Signing
+ * secrets and cloud credentials are never included, but an endpoint's URL may
+ * itself be sensitive, so log keys with care.
+ */
+export interface OutboundImportItemError {
+  /** One of these, or a kind added to the API after this SDK. */
+  kind: "event_type" | "consumer" | "endpoint" | "limit" | (string & {});
+  /** The item's position in its list; -1 for a limit. */
+  index: number;
+  key?: string;
+  error: string;
+}
+
+/** Items of one kind the import created, and the existing ones it left unchanged. */
+export interface OutboundImportCounts {
+  total: number;
+  created: number;
+  unchanged: number;
+}
+
+/**
+ * `pending`, `validating` (every item is checked again, including that
+ * endpoint hosts are public, before anything is written) and `running`
+ * (creating items) mean the import is still working; `completed` and `failed`
+ * are final, as is any status added after this SDK. Use
+ * {@link isOutboundImportDone} rather than comparing statuses.
+ */
+export type OutboundImportStatus =
+  | "pending"
+  | "validating"
+  | "running"
+  | "completed"
+  | "failed"
+  | (string & {});
+
+/** A bulk import running in the background. */
+export interface OutboundImportTask {
+  id: string;
+  status: OutboundImportStatus;
+  /** All items in the import. */
+  total: number;
+  /** Items created or found unchanged so far. */
+  processed: number;
+  event_types: OutboundImportCounts;
+  consumers: OutboundImportCounts;
+  endpoints: OutboundImportCounts;
+  /**
+   * Items the background validation refused (an endpoint host that resolves
+   * to a private address, a Function deleted since the import started);
+   * nothing was written then.
+   */
+  errors?: OutboundImportItemError[];
+  /**
+   * Why a failed import stopped. When `errors` is empty, the items before the
+   * one that stopped it may already exist; starting the same import again
+   * resumes it.
+   */
+  error?: string;
+  created_at?: string;
+  updated_at?: string;
+  completed_at?: string;
 }

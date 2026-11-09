@@ -1,10 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { createClient } from "./helpers.js";
-import { onboardCustomer, publishInvoicePaid, reportFailingEndpoints } from "../examples/outbound.js";
+import { isOutboundImportDone, WebhookRelay, WebhookRelayAPIError, WebhookRelayConnectionError } from "../src/index.js";
+import { importCustomers, onboardCustomer, publishInvoicePaid, reportFailingEndpoints } from "../examples/outbound.js";
 
 const base = "https://my.webhookrelay.com";
 const requests = (calls: { method: string; url: string }[]) =>
   calls.map((c) => `${c.method} ${c.url.replace(base, "")}`);
+
+/** A fetch that answers only by failing when its request is aborted. */
+const hangingFetch = ((_input: unknown, init: RequestInit = {}) =>
+  new Promise((_resolve, reject) => {
+    const abort = () => reject(new DOMException("aborted", "AbortError"));
+    if (init.signal?.aborted) abort(); // as fetch does
+    init.signal?.addEventListener("abort", abort);
+  })) as typeof fetch;
 
 describe("outbound", () => {
   it("manages consumers and event types", async () => {
@@ -198,6 +207,246 @@ describe("outbound", () => {
     expect(health).toEqual(body);
     expect(health.endpoints.failing).toBe(1);
     expect(health.stats.failures).toBe(9);
+  });
+
+  it("starts a bulk import with camelCase or snake_case params", async () => {
+    const task = {
+      id: "import-1",
+      status: "pending",
+      total: 3,
+      processed: 0,
+      event_types: { total: 1, created: 0, unchanged: 0 },
+      consumers: { total: 1, created: 0, unchanged: 0 },
+      endpoints: { total: 1, created: 0, unchanged: 0 },
+      created_at: "2026-11-09T10:00:00Z",
+    };
+    const { relay, calls } = createClient((url, method) =>
+      method === "POST" ? { status: 202, json: task } : { json: { ...task, status: "completed", processed: 3 } },
+    );
+
+    const started = await relay.outbound.imports.start({
+      eventTypes: [{ name: "invoice.paid", description: "Paid", example: { id: 1 }, deprecated: false }],
+      consumers: [{ id: "customer_42", name: "Acme", rate: 5 }],
+      endpoints: [
+        {
+          consumer: "customer_42",
+          url: "https://customer.example/webhooks",
+          eventTypes: ["invoice.paid"],
+          autoDisable: true,
+          functionId: "fn-1",
+          secret: "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw",
+          headers: { "X-Env": "prod" },
+          paused: true,
+        },
+        {
+          consumer: "customer_42",
+          type: "aws_sqs",
+          destination: { aws_sqs: { queue_url: "https://sqs.eu-west-1.amazonaws.com/1/orders" } },
+          credentials: { aws: { access_key_id: "AKIA", secret_access_key: "s3cr3t" } },
+          event_types: ["*"],
+        },
+      ],
+    });
+    const done = await relay.outbound.imports.get("import/1");
+
+    expect(requests(calls)).toEqual(["POST /v1/outbound/imports", "GET /v1/outbound/imports/import%2F1"]);
+    expect(calls[0]?.body).toEqual({
+      event_types: [{ name: "invoice.paid", description: "Paid", example: { id: 1 }, deprecated: false }],
+      consumers: [{ id: "customer_42", name: "Acme", rate: 5 }],
+      endpoints: [
+        {
+          consumer: "customer_42",
+          url: "https://customer.example/webhooks",
+          event_types: ["invoice.paid"],
+          auto_disable: true,
+          function_id: "fn-1",
+          secret: "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw",
+          headers: { "X-Env": "prod" },
+          paused: true,
+        },
+        {
+          consumer: "customer_42",
+          type: "aws_sqs",
+          destination: { aws_sqs: { queue_url: "https://sqs.eu-west-1.amazonaws.com/1/orders" } },
+          credentials: { aws: { access_key_id: "AKIA", secret_access_key: "s3cr3t" } },
+          event_types: ["*"],
+        },
+      ],
+    });
+    expect(started).toEqual(task);
+    expect(done.status).toBe("completed");
+    expect(done.processed).toBe(3);
+  });
+
+  it("exposes the invalid items of a refused import", async () => {
+    const itemErrors = [
+      { kind: "endpoint", index: 0, key: "customer_42 http://x", error: "url must use https" },
+      { kind: "consumer", index: 2, key: "", error: "id is required" },
+    ];
+    const { relay } = createClient(() => ({
+      status: 400,
+      json: { error: "2 invalid import items", errors: itemErrors },
+    }));
+
+    const err = await relay.outbound.imports.start({ consumers: [{ id: "" }] }).catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(WebhookRelayAPIError);
+    const apiErr = err as WebhookRelayAPIError;
+    expect(apiErr.status).toBe(400);
+    expect(apiErr.message).toContain("2 invalid import items");
+    expect(apiErr.itemErrors).toEqual(itemErrors);
+  });
+
+  it("reports no item errors for a conflicting import", async () => {
+    const { relay } = createClient(() => ({ status: 409, json: { error: "another import is running" } }));
+
+    const err = (await relay.outbound.imports.start({}).catch((e: unknown) => e)) as WebhookRelayAPIError;
+
+    expect(err.status).toBe(409);
+    expect(err.itemErrors).toEqual([]);
+  });
+
+  it("ignores an errors array of another shape", async () => {
+    const { relay } = createClient(() => ({
+      status: 400,
+      json: { error: "bad request", errors: [{ code: "bad_gateway" }, "url is required"] },
+    }));
+
+    const err = (await relay.outbound.imports.start({}).catch((e: unknown) => e)) as WebhookRelayAPIError;
+
+    expect(err.status).toBe(400);
+    expect(err.itemErrors).toEqual([]);
+  });
+
+  it("keeps item errors of a kind newer than the SDK", async () => {
+    const itemErrors = [
+      { kind: "event_type", index: 0, key: "invoice.paid", error: "listed twice" },
+      { kind: "limit", index: -1, key: "consumers", error: "consumer limit" },
+      { kind: "function", index: 0, error: "a kind the API added later" },
+    ];
+    const { relay } = createClient(() => ({ status: 400, json: { error: "3 invalid import items", errors: itemErrors } }));
+
+    const err = (await relay.outbound.imports.start({}).catch((e: unknown) => e)) as WebhookRelayAPIError;
+
+    expect(err.itemErrors).toEqual(itemErrors);
+  });
+
+  it("lists no item errors when one has another shape", async () => {
+    const { relay } = createClient(() => ({
+      status: 400,
+      json: { error: "bad", errors: [{ kind: "endpoint", index: 0, error: "bad url" }, { kind: "endpoint", index: 1, error: "" }] },
+    }));
+
+    const err = (await relay.outbound.imports.start({}).catch((e: unknown) => e)) as WebhookRelayAPIError;
+
+    expect(err.itemErrors).toEqual([]);
+  });
+
+  it("reads why an import failed in the background", async () => {
+    const failed = {
+      id: "import-1",
+      status: "failed",
+      total: 2,
+      processed: 0,
+      event_types: { total: 0, created: 0, unchanged: 0 },
+      consumers: { total: 1, created: 0, unchanged: 0 },
+      endpoints: { total: 1, created: 0, unchanged: 0 },
+      error: "import refused, nothing was written: 1 invalid item(s)",
+      errors: [{ kind: "endpoint", index: 0, key: "customer_42 https://10.example", error: "resolves to 10.0.0.5" }],
+    };
+    const { relay } = createClient(() => ({ json: failed }));
+
+    const task = await relay.outbound.imports.get("import-1");
+
+    expect(task.status).toBe("failed");
+    expect(task.error).toContain("nothing was written");
+    expect(task.errors?.[0]?.kind).toBe("endpoint");
+    expect(task.errors?.[0]?.index).toBe(0);
+  });
+
+  it("applies a per-call timeout over the client default", async () => {
+    const relay = new WebhookRelay({ apiKey: "sk-test", fetch: hangingFetch, timeoutMs: 60_000 });
+
+    const err = await relay.outbound.imports.start({}, { timeoutMs: 5 }).catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(WebhookRelayConnectionError);
+  });
+
+  it("lets a large import outlast the client's default timeout", async () => {
+    const slow = ((_input: unknown, init: RequestInit = {}) =>
+      new Promise((resolve, reject) => {
+        const timer = setTimeout(
+          () => resolve(new Response(JSON.stringify({ id: "import-1", status: "pending" }), { status: 202 })),
+          50,
+        );
+        init.signal?.addEventListener("abort", () => {
+          clearTimeout(timer);
+          reject(new DOMException("aborted", "AbortError"));
+        });
+      })) as typeof fetch;
+    const relay = new WebhookRelay({ apiKey: "sk-test", fetch: slow, timeoutMs: 5 });
+
+    const task = await relay.outbound.imports.start({}, { timeoutMs: 5_000 });
+
+    expect(task.id).toBe("import-1");
+  });
+
+  it("treats every status but pending, validating and running as final", () => {
+    for (const status of ["pending", "validating", "running", ""]) {
+      expect(isOutboundImportDone({ status })).toBe(false);
+    }
+    for (const status of ["completed", "failed", "cancelled"]) {
+      expect(isOutboundImportDone({ status })).toBe(true);
+    }
+  });
+
+  it("runs the import example to a failure", async () => {
+    const { relay } = createClient(() => ({
+      json: { id: "import-1", status: "failed", error: "1 invalid item(s)", errors: [{ kind: "endpoint", index: 0, error: "resolves to 10.0.0.5" }] },
+    }));
+
+    await expect(importCustomers(relay, "https://customer.example/webhooks", { pollMs: 0 })).rejects.toThrow("import import-1 failed: 1 invalid item(s)");
+  });
+
+  it("stops the import example when its signal aborts", async () => {
+    const { relay } = createClient((_url, method) =>
+      method === "POST" ? { status: 202, json: { id: "import-1", status: "pending" } } : { json: { id: "import-1", status: "running" } },
+    );
+
+    await expect(importCustomers(relay, "https://customer.example/webhooks", { pollMs: 1, signal: AbortSignal.timeout(30) })).rejects.toThrow();
+  });
+
+  it("lists no item errors when a key is not a string", async () => {
+    const { relay } = createClient(() => ({ status: 400, json: { error: "bad", errors: [{ kind: "endpoint", index: 0, key: 42, error: "x" }] } }));
+
+    const err = (await relay.outbound.imports.start({}).catch((e: unknown) => e)) as WebhookRelayAPIError;
+
+    expect(err.itemErrors).toEqual([]);
+  });
+
+  it("runs the import example", async () => {
+    let polls = 0;
+    const { relay, calls } = createClient((_url, method) => {
+      if (method === "POST") return { status: 202, json: { id: "import-1", status: "pending" } };
+      polls++;
+      return { json: { id: "import-1", status: polls < 2 ? "running" : "completed", endpoints: { total: 1, created: 1, unchanged: 0 } } };
+    });
+
+    const task = await importCustomers(relay, "https://customer.example/webhooks", { pollMs: 0 });
+
+    expect(task.status).toBe("completed");
+    expect(requests(calls)).toEqual(["POST /v1/outbound/imports", "GET /v1/outbound/imports/import-1", "GET /v1/outbound/imports/import-1"]);
+    expect(calls[0]?.body).toMatchObject({ endpoints: [{ consumer: "customer_42", paused: true, event_types: ["invoice.paid"] }] });
+  });
+
+  it("cancels an import call with the caller's signal", async () => {
+    const relay = new WebhookRelay({ apiKey: "sk-test", fetch: hangingFetch, timeoutMs: 60_000 });
+    const controller = new AbortController();
+
+    const pending = relay.outbound.imports.get("import-1", { signal: controller.signal }).catch((e: unknown) => e);
+    controller.abort();
+
+    expect(await pending).toBeInstanceOf(WebhookRelayConnectionError);
   });
 
   it("runs the failing-endpoints example", async () => {

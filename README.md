@@ -267,7 +267,48 @@ const failing = await relay.outbound.endpoints.listAll({ state: "failing", limit
 for (const e of failing) console.log(e.consumer, e.url, e.failing_since, e.stats?.failures);
 ```
 
-A runnable version lives in [`examples/outbound.ts`](./examples/outbound.ts).
+Migrating from another webhook sender (Svix, Hookdeck Outpost, ...)? Import
+event types, consumers and endpoints in bulk, up to 5000 items per import.
+Endpoints keep their existing signing `secret`, and `paused: true` holds
+deliveries until you cut over and resume them. Items that already exist are
+left unchanged, so re-running an import is safe:
+
+```ts
+import { isOutboundImportDone } from "@webhookrelay/sdk";
+
+let task = await relay.outbound.imports.start({
+  eventTypes: [{ name: "invoice.paid" }],
+  consumers: [{ id: "customer_42", name: "Acme" }],
+  endpoints: [{
+    consumer: "customer_42",
+    url: "https://customer.example/webhooks",
+    eventTypes: ["invoice.paid"],
+    secret: "whsec_...",
+    paused: true,
+  }],
+}, { timeoutMs: 120_000 }); // a large import can outlast the default timeout
+while (!isOutboundImportDone(task)) { // bound the wait, e.g. with a deadline
+  await new Promise((resolve) => setTimeout(resolve, 2_000));
+  task = await relay.outbound.imports.get(task.id);
+}
+if (task.status === "failed") {
+  // task.errors lists refused items when nothing was written; otherwise
+  // task.error names the item that stopped it, and starting it again resumes it.
+  throw new Error(`import ${task.id} failed: ${task.error}`);
+}
+// task.endpoints: { total, created, unchanged }
+```
+
+The whole import is validated before anything is written: invalid items fail
+the call with a 400 whose `err.itemErrors` lists up to 100 of them as
+`{ kind, index, key, error }` (`err.message` gives the total, and the reason
+when the import as a whole is refused). Only one import runs at a time:
+sending the same import again while it runs returns the running task, so
+retrying after a timeout is safe; a different import gets a 409. Item keys
+name endpoints by URL, which may be sensitive, so log them with care.
+
+Runnable versions of these examples, the import included (`importCustomers`),
+live in [`examples/outbound.ts`](./examples/outbound.ts).
 
 ## Receiving webhooks
 
