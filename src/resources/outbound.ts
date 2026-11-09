@@ -1,4 +1,4 @@
-import type { HttpClient } from "../http.js";
+import type { HttpClient, RequestOptions } from "../http.js";
 import { outboundEndpointParams, outboundImportParams, outboundMessageParams } from "../params.js";
 import type {
   ListAllOutboundEndpointsParams,
@@ -328,6 +328,9 @@ export class OutboundRecoveryTasksResource {
   }
 }
 
+/** Per-call cancellation and timeout. */
+type CallOptions = Pick<RequestOptions, "signal" | "timeoutMs">;
+
 /**
  * Bulk import of event types, consumers and endpoints, for migrations from
  * another webhook sender (Svix, Hookdeck Outpost, ...).
@@ -340,11 +343,16 @@ export class OutboundImportsResource {
    * Items that already exist (event types by name, consumers by ID, endpoints
    * by URL or destination per consumer) are left unchanged, so re-running an
    * import is safe. At most 5000 items and 10 MiB per import, one import at a
-   * time.
+   * time. Sending the same import again while it runs returns the running
+   * task, so retrying after a timeout or connection error is safe.
    *
-   * Throws {@link WebhookRelayAPIError}: 400 with the invalid items in
-   * `itemErrors` (nothing was written), 409 while another import is running,
-   * 413 when the request is too large.
+   * A large import can take longer to upload and validate than the client's
+   * default timeout; raise it per call with `options.timeoutMs`.
+   *
+   * Throws {@link WebhookRelayAPIError}: 400 with up to 100 of the invalid
+   * items in `itemErrors` (nothing was written; the message gives the total),
+   * 409 while a different import is running, 413 when the request is too
+   * large.
    *
    * ```ts
    * const task = await relay.outbound.imports.start({
@@ -357,18 +365,19 @@ export class OutboundImportsResource {
    *     secret: "whsec_...", // keep the consumer's existing signing secret
    *     paused: true,        // resume after the cutover
    *   }],
-   * });
+   * }, { timeoutMs: 120_000 });
    * ```
    */
-  start(request: OutboundImportRequest): Promise<OutboundImportTask> {
+  start(request: OutboundImportRequest, options: CallOptions = {}): Promise<OutboundImportTask> {
     return this.http.request<OutboundImportTask>("POST", "/v1/outbound/imports", {
+      ...options,
       body: outboundImportParams(request),
     });
   }
 
   /** Get an import's progress by ID. */
-  get(id: string): Promise<OutboundImportTask> {
-    return this.http.request<OutboundImportTask>("GET", `/v1/outbound/imports/${segment(id)}`);
+  get(id: string, options: CallOptions = {}): Promise<OutboundImportTask> {
+    return this.http.request<OutboundImportTask>("GET", `/v1/outbound/imports/${segment(id)}`, options);
   }
 }
 

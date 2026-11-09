@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createClient } from "./helpers.js";
-import { WebhookRelayAPIError } from "../src/index.js";
+import { WebhookRelay, WebhookRelayAPIError, WebhookRelayConnectionError } from "../src/index.js";
 import { onboardCustomer, publishInvoicePaid, reportFailingEndpoints } from "../examples/outbound.js";
 
 const base = "https://my.webhookrelay.com";
@@ -266,7 +266,6 @@ describe("outbound", () => {
       ],
     });
     expect(started).toEqual(task);
-    expect(started.event_types.total).toBe(1);
     expect(done.status).toBe("completed");
     expect(done.processed).toBe(3);
   });
@@ -297,6 +296,52 @@ describe("outbound", () => {
 
     expect(err.status).toBe(409);
     expect(err.itemErrors).toEqual([]);
+  });
+
+  it("ignores an errors array of another shape", async () => {
+    const { relay } = createClient(() => ({
+      status: 400,
+      json: { error: "bad request", errors: [{ code: "bad_gateway" }, "url is required"] },
+    }));
+
+    const err = (await relay.outbound.imports.start({}).catch((e: unknown) => e)) as WebhookRelayAPIError;
+
+    expect(err.status).toBe(400);
+    expect(err.itemErrors).toEqual([]);
+  });
+
+  it("reads why an import failed in the background", async () => {
+    const failed = {
+      id: "import-1",
+      status: "failed",
+      total: 2,
+      processed: 0,
+      event_types: { total: 0, created: 0, unchanged: 0 },
+      consumers: { total: 1, created: 0, unchanged: 0 },
+      endpoints: { total: 1, created: 0, unchanged: 0 },
+      error: "import refused, nothing was written: 1 invalid item(s)",
+      errors: [{ kind: "endpoint", index: 0, key: "customer_42 https://10.example", error: "resolves to 10.0.0.5" }],
+    };
+    const { relay } = createClient(() => ({ json: failed }));
+
+    const task = await relay.outbound.imports.get("import-1");
+
+    expect(task.status).toBe("failed");
+    expect(task.error).toContain("nothing was written");
+    expect(task.errors?.[0]?.kind).toBe("endpoint");
+    expect(task.errors?.[0]?.index).toBe(0);
+  });
+
+  it("lets a large import raise the client's timeout per call", async () => {
+    const hanging = ((_input: unknown, init: RequestInit = {}) =>
+      new Promise((_resolve, reject) => {
+        init.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+      })) as typeof fetch;
+    const relay = new WebhookRelay({ apiKey: "sk-test", fetch: hanging, timeoutMs: 60_000 });
+
+    const err = await relay.outbound.imports.start({}, { timeoutMs: 5 }).catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(WebhookRelayConnectionError);
   });
 
   it("runs the failing-endpoints example", async () => {

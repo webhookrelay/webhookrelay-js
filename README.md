@@ -284,15 +284,18 @@ let task = await relay.outbound.imports.start({
     secret: "whsec_...",
     paused: true,
   }],
-});
+}, { timeoutMs: 120_000 }); // a large import can outlast the default timeout
 task = await relay.outbound.imports.get(task.id);
 // task.status: pending | validating | running | completed | failed
 // task.endpoints: { total, created, unchanged }
 ```
 
 The whole import is validated before anything is written: invalid items fail
-the call with a 400 whose `err.itemErrors` lists each `{ kind, index, key, error }`.
-Only one import runs at a time (409 otherwise).
+the call with a 400 whose `err.itemErrors` lists up to 100 of them as
+`{ kind, index, key, error }` (`err.message` gives the total). Only one import
+runs at a time: sending the same import again while it runs returns the
+running task, so retrying after a timeout is safe; a different import gets a
+409.
 
 A runnable version lives in [`examples/outbound.ts`](./examples/outbound.ts).
 

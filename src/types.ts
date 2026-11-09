@@ -526,11 +526,51 @@ export interface UpsertOutboundEventTypeParams {
 
 export type OutboundEndpointState = "active" | "failing" | "paused" | "disabled";
 
-/** A consumer's HTTPS destination. */
+/** Where an endpoint delivers: an HTTPS webhook or the consumer's own cloud. */
+export type OutboundEndpointType =
+  | "webhook"
+  | "aws_sqs"
+  | "aws_sns"
+  | "aws_s3"
+  | "gcp_pubsub"
+  | "gcp_gcs";
+
+/**
+ * Configures a cloud endpoint: exactly the block matching its `type`.
+ * Webhooks have none. `endpoint_url` points an AWS destination at an
+ * AWS-compatible service (MinIO, Cloudflare R2, LocalStack). Keys inside the
+ * blocks are the API's snake_case names: camelCase aliases apply only to an
+ * endpoint's top-level fields.
+ */
+export interface OutboundDestination {
+  aws_sqs?: { queue_url: string; region?: string; endpoint_url?: string };
+  aws_sns?: { topic_arn: string; region?: string; endpoint_url?: string };
+  aws_s3?: { bucket: string; region: string; prefix?: string; endpoint_url?: string };
+  /** `topic` is `projects/{project}/topics/{topic}` or a topic ID in the service account's project. */
+  gcp_pubsub?: { topic: string };
+  gcp_gcs?: { bucket: string; prefix?: string };
+}
+
+/**
+ * Credentials for a cloud endpoint, with snake_case keys as in
+ * {@link OutboundDestination}. Write-only: stored encrypted, never returned.
+ */
+export interface OutboundEndpointCredentials {
+  aws?: { access_key_id: string; secret_access_key: string };
+  /** `service_account_key` is the service account's JSON key file. */
+  gcp?: { service_account_key: string };
+}
+
+/** A consumer's destination: an HTTPS URL or a cloud destination. */
 export interface OutboundEndpoint {
   id: string;
   consumer: string;
+  /** Absent or `webhook` for HTTPS endpoints. */
+  type?: OutboundEndpointType;
+  /** The webhook URL; for a cloud endpoint, the target derived from its destination. */
   url: string;
+  /** Set for cloud endpoints. Credentials are write-only and never returned. */
+  destination?: OutboundDestination;
   description?: string;
   event_types: string[];
   headers?: Record<string, string>;
@@ -714,36 +754,6 @@ export interface OutboundRecoveryTask {
 }
 
 // Bulk import ----------------------------------------------------------------
-
-/** Where an endpoint delivers: an HTTPS webhook or the consumer's own cloud. */
-export type OutboundEndpointType =
-  | "webhook"
-  | "aws_sqs"
-  | "aws_sns"
-  | "aws_s3"
-  | "gcp_pubsub"
-  | "gcp_gcs";
-
-/**
- * Configures a cloud endpoint: exactly the block matching its `type`.
- * Webhooks have none. `endpoint_url` points an AWS destination at an
- * AWS-compatible service (MinIO, Cloudflare R2, LocalStack).
- */
-export interface OutboundDestination {
-  aws_sqs?: { queue_url: string; region?: string; endpoint_url?: string };
-  aws_sns?: { topic_arn: string; region?: string; endpoint_url?: string };
-  aws_s3?: { bucket: string; region: string; prefix?: string; endpoint_url?: string };
-  /** `topic` is `projects/{project}/topics/{topic}` or a topic ID in the service account's project. */
-  gcp_pubsub?: { topic: string };
-  gcp_gcs?: { bucket: string; prefix?: string };
-}
-
-/** Credentials for a cloud endpoint. Write-only: stored encrypted, never returned. */
-export interface OutboundEndpointCredentials {
-  aws?: { access_key_id: string; secret_access_key: string };
-  /** `service_account_key` is the service account's JSON key file. */
-  gcp?: { service_account_key: string };
-}
 
 /** An event type to create unless one with its name exists. */
 export interface OutboundImportEventType {

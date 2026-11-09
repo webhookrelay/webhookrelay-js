@@ -100,7 +100,7 @@ const outboundImportAliases: Record<string, string> = {
 };
 
 /** Normalize a bulk import, including each endpoint's camelCase fields. */
-export function outboundImportParams<T extends { endpoints?: object[] }>(params: T): Params {
+export function outboundImportParams(params: { endpoints?: object[] }): Params {
   const out = applyAliases(params, outboundImportAliases);
   if (params.endpoints) out.endpoints = params.endpoints.map((e) => outboundEndpointParams(e));
   return out;
