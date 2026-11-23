@@ -310,6 +310,105 @@ name endpoints by URL, which may be sensitive, so log them with care.
 Runnable versions of these examples, the import included (`importCustomers`),
 live in [`examples/outbound.ts`](./examples/outbound.ts).
 
+### Channels, filters and test events
+
+An endpoint receives every message of its event types unless you narrow it.
+`channels` route by tag: a message published with `channels` reaches the
+endpoints subscribed to one of them, plus endpoints without channels. `filter`
+matches the published payload (equality, nested or dotted paths, `$eq` `$neq`
+`$in` `$nin` `$exists` `$gt` `$gte` `$lt` `$lte`, `$or`/`$and`); filtered-out
+deliveries are recorded as `rejected` and never attempted.
+
+```ts
+const endpoint = await relay.outbound.endpoints.create("customer_42", {
+  url: "https://customer.example/webhooks",
+  eventTypes: ["invoice.paid"],
+  channels: ["project-123"],
+  filter: { status: { $in: ["paid", "refunded"] }, amount: { $gte: 100 } },
+});
+await relay.outbound.messages.publish({
+  consumer: "customer_42",
+  eventType: "invoice.paid",
+  channels: ["project-123"],
+  payload: { invoice_id: "inv_123", status: "paid", amount: 4900 },
+});
+
+// A test event only this endpoint receives; it skips the filter and channels.
+const test = await relay.outbound.endpoints.sendTest(endpoint.id, { eventType: "invoice.paid" });
+
+// `endpoints.update` replaces the whole configuration (an update without
+// `filter` clears it); `endpoints.patch` changes only the fields you pass.
+await relay.outbound.endpoints.patch(endpoint.id, { filter: { status: "paid" } });
+```
+
+### Cloud destinations
+
+Endpoints can deliver into the consumer's own AWS SQS, SNS, S3, Google Pub/Sub
+or Cloud Storage instead of an HTTPS URL. Credentials are write-only; reads show
+`credentials_identity` (the access key ID or service account email) instead.
+
+```ts
+await relay.outbound.endpoints.create("customer_42", {
+  type: "aws_sqs",
+  destination: { aws_sqs: { queue_url: "https://sqs.eu-west-1.amazonaws.com/123456789012/orders", region: "eu-west-1" } },
+  credentials: { aws: { access_key_id: "AKIA...", secret_access_key: "..." } },
+  eventTypes: ["invoice.paid"],
+});
+```
+
+### Environments
+
+Environments (`test`, `live`, ...) each have their own consumers, event types,
+endpoints, messages and portal sessions; `default` always exists and holds
+everything created without one. Quotas are shared across environments.
+
+```ts
+await relay.outbound.environments.create({ name: "test", description: "Staging" });
+
+// Every outbound call of this client acts in `test` (X-Outbound-Environment header).
+const staging = new WebhookRelay({ apiKey: "sk-...", outboundEnvironment: "test" });
+
+// Or derive a bound view from any client; nothing is fetched.
+const live = relay.outbound.withEnvironment("live");
+await live.messages.publish({ consumer: "customer_42", eventType: "invoice.paid", payload: {} });
+```
+
+A token restricted to one environment always acts there and gets a 403 when a
+request names another.
+
+### Embed the consumer portal
+
+Let each customer manage their own endpoints and read their deliveries in a
+hosted portal. Allow your app's origin once, mint a link server-side per page
+load, and embed it with the React component from `@webhookrelay/sdk/react`
+(React is an optional peer dependency; the core SDK never imports it):
+
+```ts
+// Once. update() replaces the settings, so carry the current ones over.
+const { portal_id, created_at, updated_at, ...settings } = await relay.outbound.portalSettings.get();
+await relay.outbound.portalSettings.update({
+  ...settings,
+  allowed_origins: [...settings.allowed_origins, "https://app.acme.example"],
+});
+
+// Server, per page load. The URL carries a one-time token: never log it.
+const { url } = await relay.outbound.portalSessions.create("customer_42", { sessionId: `user-${user.id}` });
+
+// On sign-out.
+await relay.outbound.portalSessions.expire("customer_42", { sessionId: `user-${user.id}` });
+```
+
+```tsx
+import { WebhookRelayPortal } from "@webhookrelay/sdk/react";
+
+<WebhookRelayPortal url={url} height={720} />; // also title, className, style, width, allow, onLoad
+```
+
+Runnable versions: [`examples/outbound-routing.ts`](./examples/outbound-routing.ts),
+[`examples/outbound-cloud.ts`](./examples/outbound-cloud.ts),
+[`examples/outbound-environments.ts`](./examples/outbound-environments.ts) and
+[`examples/outbound-portal.tsx`](./examples/outbound-portal.tsx).
+
 ## Receiving webhooks
 
 Three delivery modes, from most durable to lowest latency:

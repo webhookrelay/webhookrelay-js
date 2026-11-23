@@ -495,6 +495,8 @@ export interface OutboundAccess {
 export interface OutboundConsumer {
   id: string;
   name: string;
+  /** The outbound environment the consumer belongs to. */
+  environment?: string;
   /** Default deliveries per second for the consumer's endpoints; 0 means 50. */
   rate: number;
   /** RFC3339 timestamp. */
@@ -510,6 +512,8 @@ export interface UpsertOutboundConsumerParams {
 /** An entry in your event catalog, such as `invoice.paid`. */
 export interface OutboundEventType {
   name: string;
+  /** The outbound environment the event type belongs to. */
+  environment?: string;
   description?: string;
   example?: unknown;
   /** Deprecated event types cannot be published. */
@@ -561,18 +565,44 @@ export interface OutboundEndpointCredentials {
   gcp?: { service_account_key: string };
 }
 
+/**
+ * Delivers only the messages whose published payload matches, e.g.
+ * `{ type: "invoice", amount: { $gte: 100 } }`. Fields compare for equality
+ * (an array field matches when any element does); nested objects or dotted
+ * keys (`"data.customer.tier"`) reach into the payload; operator objects use
+ * `$eq`, `$neq`, `$in`, `$nin`, `$exists`, `$gt`, `$gte`, `$lt` and `$lte`;
+ * `$or` and `$and` take arrays of filters, and sibling keys are ANDed. At
+ * most 4 KiB and 8 levels deep. Filtered-out deliveries are recorded as
+ * `rejected` and never attempted.
+ */
+export type OutboundFilter = Record<string, unknown>;
+
 /** A consumer's destination: an HTTPS URL or a cloud destination. */
 export interface OutboundEndpoint {
   id: string;
   consumer: string;
+  /** The outbound environment the endpoint belongs to. */
+  environment?: string;
   /** Absent or `webhook` for HTTPS endpoints. */
   type?: OutboundEndpointType;
   /** The webhook URL; for a cloud endpoint, the target derived from its destination. */
   url: string;
   /** Set for cloud endpoints. Credentials are write-only and never returned. */
   destination?: OutboundDestination;
+  /**
+   * Names the configured cloud credentials without revealing them: the AWS
+   * access key ID or the service account's email.
+   */
+  credentials_identity?: string;
   description?: string;
   event_types: string[];
+  /**
+   * Only messages published with at least one of these channels; absent means
+   * every message of its event types.
+   */
+  channels?: string[];
+  /** Only messages whose payload matches; absent means every message. */
+  filter?: OutboundFilter;
   headers?: Record<string, string>;
   rate: number;
   /** Seconds per delivery attempt; 0 means 15. */
@@ -624,12 +654,34 @@ export interface OutboundEndpointWithSecret extends OutboundEndpoint {
   secret: string;
 }
 
+/**
+ * An endpoint's whole configuration. `endpoints.update` replaces it, so
+ * fields left out (such as `filter` or `channels`) are cleared; use
+ * `endpoints.patch` to change only some fields.
+ */
 export interface OutboundEndpointParams {
-  /** Public HTTPS URL. */
-  url: string;
+  /** Defaults to `webhook`. */
+  type?: OutboundEndpointType;
+  /** Public HTTPS URL; required for webhooks, unused for cloud endpoints. */
+  url?: string;
+  /** Required for cloud endpoints: the block matching `type`. */
+  destination?: OutboundDestination;
+  /**
+   * Cloud credentials. Write-only; an update without them keeps the stored
+   * ones (they are required again when switching between AWS and GCP or to
+   * another AWS `endpoint_url`).
+   */
+  credentials?: OutboundEndpointCredentials;
   /** Event types to deliver, or `["*"]` for all. */
   event_types?: string[];
   eventTypes?: string[];
+  /**
+   * Deliver only messages published with at least one of these channels (at
+   * most 10, each 1-128 letters, digits or `-_.:`). Omit for every message.
+   */
+  channels?: string[];
+  /** Deliver only messages whose payload matches; see {@link OutboundFilter}. */
+  filter?: OutboundFilter;
   description?: string;
   headers?: Record<string, string>;
   /** Deliveries per second; 0 uses the consumer's rate. */
@@ -663,6 +715,27 @@ export interface PublishOutboundMessageParams {
   eventId?: string;
   /** Any JSON value, up to 256 KiB. */
   payload: unknown;
+  /**
+   * Route the message to endpoints subscribed to any of these channels (at
+   * most 10). Endpoints without channels receive every message; a message
+   * without channels reaches only them.
+   */
+  channels?: string[];
+}
+
+/** A test event for one endpoint. Both fields are optional. */
+export interface SendOutboundTestParams {
+  /**
+   * Defaults to the endpoint's first subscribed event type (required when it
+   * receives all events).
+   */
+  event_type?: string;
+  eventType?: string;
+  /**
+   * Any JSON value; defaults to the event type's example. A test always
+   * reaches the endpoint: neither its filter nor its channels apply.
+   */
+  payload?: unknown;
 }
 
 export interface PublishOutboundMessageOptions {
@@ -698,10 +771,20 @@ export interface OutboundDelivery extends WebhookLog {
 export interface OutboundMessage {
   id: string;
   consumer: string;
+  /** The outbound environment the message was published in. */
+  environment?: string;
   event_type: string;
   event_id?: string;
+  /** The channels the message was published with. */
+  channels?: string[];
   payload?: unknown;
   endpoint_ids: string[];
+  /** Subscribed endpoints that were paused or disabled when it was published. */
+  skipped_endpoint_ids?: string[];
+  /** Each skipped endpoint's state. */
+  skip_reasons?: Record<string, OutboundEndpointState>;
+  /** Set for test events sent with `endpoints.sendTest`. */
+  test?: boolean;
   created_at?: string;
   /** When deliveries were queued; absent while the message is still preparing. */
   enqueued_at?: string;
@@ -872,3 +955,82 @@ export interface OutboundImportTask {
   updated_at?: string;
   completed_at?: string;
 }
+
+// Environments ----------------------------------------------------------------
+
+/**
+ * A named outbound environment, such as `test` or `live`, with its own
+ * consumers, event types, endpoints, messages and portal sessions. `default`
+ * always exists.
+ */
+export interface OutboundEnvironment {
+  name: string;
+  description?: string;
+  /** True only for the built-in `default` environment. */
+  default: boolean;
+  created_at?: string;
+}
+
+export interface CreateOutboundEnvironmentParams {
+  /** 1-32 characters: lowercase letters, digits, `-` and `_`, starting with a letter or digit. */
+  name: string;
+  description?: string;
+}
+
+// Consumer portal ---------------------------------------------------------------
+
+export interface CreateOutboundPortalSessionParams {
+  /** `manage` (default) lets the consumer change its endpoints; `read` only shows them. */
+  capabilities?: "manage" | "read";
+  /** Session lifetime in seconds, 3600-604800; defaults to 12 hours. */
+  ttl?: number;
+  /** Page to open: `endpoints/new`, `endpoints/<id>`, `event-types` or `messages/<id>`. */
+  next?: string;
+  /** Your tag for the session, to end it later with `portalSessions.expire`. */
+  session_id?: string;
+  sessionId?: string;
+}
+
+/**
+ * A portal link for one consumer. `url` carries a one-time token in its
+ * fragment: hand it to that consumer's browser only, and never log it.
+ */
+export interface OutboundPortalLink {
+  url: string;
+  /** When the session ends. */
+  expires_at: string;
+  /** When the link stops working if it was never opened (about 15 minutes). */
+  token_expires_at: string;
+}
+
+export interface ExpireOutboundPortalSessionsParams {
+  /** Only the sessions created with this tag; omit to end all of the consumer's sessions. */
+  session_id?: string;
+  sessionId?: string;
+}
+
+/** The portal's branding and embedding policy. */
+export interface OutboundPortalSettings {
+  /** Empty until the settings are saved or the first portal link is created. */
+  portal_id?: string;
+  /** Shown in the portal header, e.g. your product name. */
+  name: string;
+  logo_url?: string;
+  /** `#RRGGBB` for buttons and links. */
+  accent_color?: string;
+  theme?: "auto" | "light" | "dark";
+  /**
+   * https origins that may embed the portal in an iframe (a leading `*.`
+   * wildcard is allowed). Without any, the portal opens only as a page.
+   */
+  allowed_origins: string[];
+  /** Opened from an expired session so your app can mint a new link. */
+  refresh_url?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export type UpdateOutboundPortalSettingsParams = Omit<
+  OutboundPortalSettings,
+  "portal_id" | "created_at" | "updated_at"
+>;

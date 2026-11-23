@@ -55,14 +55,17 @@ src/
   params.ts           camelCase → snake_case param normalization.
   resources/          One class per resource, hung off the client:
     buckets.ts inputs.ts outputs.ts serviceConnections.ts functions.ts webhooks.ts
-    outbound.ts       relay.outbound.* — consumers, event types, endpoints, messages
+    outbound.ts       relay.outbound.* — consumers, event types, endpoints, messages,
+                      environments, portal sessions/settings; withEnvironment()
   streaming/
     poller.ts         WebhookPoller — async-iterable pull delivery over /v1/events.
     socket.ts         WebhookSubscription — real-time push over /v1/socket.
     websocket.ts      Isomorphic WebSocket resolver + URL helper.
+  react.tsx           `@webhookrelay/sdk/react` entry (WebhookRelayPortal). React is
+                      an optional peer dep; nothing else in src/ may import react.
   generated/api.ts    Generated low-level client (do not edit).
 test/                 Vitest suite (mock fetch + fake WebSocket; no network).
-examples/             Runnable usage examples (outbound.ts is also run by the tests).
+examples/             Runnable usage examples; the outbound*.ts(x) ones are also run by the tests.
 swagger/swagger.yaml  OpenAPI spec (input to `make openapi`).
 scripts/              Build/codegen helpers (postprocess-generated.mjs).
 ```
@@ -125,9 +128,9 @@ typecheck and the full build too.
 
 ## Build, publish & release
 
-- **Build:** tsup emits ESM (`.js`), CJS (`.cjs`) and declarations for two
-  entries: the root and `./generated`. Config in `tsup.config.ts`; `ws` is
-  marked external.
+- **Build:** tsup emits ESM (`.js`), CJS (`.cjs`) and declarations for three
+  entries: the root, `./react` and `./generated`. Config in `tsup.config.ts`;
+  `ws`, `react` and `react-dom` are marked external.
 - **Published files:** only `dist/`, `README.md`, `LICENSE` (`files` allowlist
   in `package.json`).
 - **Releases:** npm **Trusted Publishing (OIDC)** via

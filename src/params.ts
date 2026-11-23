@@ -60,6 +60,10 @@ const outboundEndpointAliases: Record<string, string> = {
   functionId: "function_id",
 };
 
+const outboundPortalSessionAliases: Record<string, string> = {
+  sessionId: "session_id",
+};
+
 const outboundImportAliases: Record<string, string> = {
   eventTypes: "event_types",
 };
@@ -99,6 +103,10 @@ export function outboundEndpointParams<T extends object>(params: T): T {
 
 export function outboundMessageParams<T extends object>(params: T): T {
   return applyAliases(params, outboundMessageAliases) as T;
+}
+
+export function outboundPortalSessionParams<T extends object>(params: T): T {
+  return applyAliases(params, outboundPortalSessionAliases) as T;
 }
 
 /** Normalize a bulk import, including each endpoint's camelCase fields. */

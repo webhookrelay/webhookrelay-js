@@ -29,6 +29,14 @@ export interface WebhookRelayConfig {
   headers?: Record<string, string>;
   /** Appended to the SDK's default User-Agent. */
   userAgent?: string;
+  /**
+   * Outbound environment (e.g. `test` or `live`) every `relay.outbound.*` call
+   * acts in, sent as the `X-Outbound-Environment` header. Omit it for the
+   * `default` environment, or for the one an environment-bound token is
+   * limited to. Derive a client for another environment with
+   * `relay.outbound.withEnvironment(name)`.
+   */
+  outboundEnvironment?: string;
 }
 
 /** Auth message payload sent over the WebSocket. */
@@ -45,6 +53,8 @@ export interface ResolvedConfig {
   fetch: typeof fetch;
   headers: Record<string, string>;
   userAgent: string;
+  /** Outbound environment; undefined for the default one. */
+  outboundEnvironment?: string;
 }
 
 function base64(input: string): string {
@@ -118,5 +128,6 @@ export function resolveConfig(config: WebhookRelayConfig = {}): ResolvedConfig {
     userAgent: config.userAgent
       ? `webhookrelay-sdk-js (${config.userAgent})`
       : "webhookrelay-sdk-js",
+    outboundEnvironment: config.outboundEnvironment?.trim() || undefined,
   };
 }

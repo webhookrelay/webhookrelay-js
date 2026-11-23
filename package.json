@@ -1,6 +1,6 @@
 {
   "name": "@webhookrelay/sdk",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Official TypeScript/JavaScript SDK for the Webhook Relay API — manage buckets, inputs, outputs, service connections and JavaScript transformation functions, poll webhooks and subscribe to them in real time over WebSocket.",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -11,6 +11,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js",
+      "require": "./dist/react.cjs"
     },
     "./generated": {
       "types": "./dist/generated/api.d.ts",
@@ -44,17 +49,25 @@
     "ws": "^8.18.0"
   },
   "peerDependencies": {
-    "ws": "^8.0.0"
+    "ws": "^8.0.0",
+    "react": ">=17.0.0"
   },
   "peerDependenciesMeta": {
     "ws": {
+      "optional": true
+    },
+    "react": {
       "optional": true
     }
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
     "@types/ws": "^8.5.10",
     "@vitest/coverage-v8": "^2.1.9",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "swagger-typescript-api": "^13.0.23",
     "tsup": "^8.0.0",
     "typescript": "^5.4.0",
@@ -73,7 +86,8 @@
     "websocket",
     "tunnel",
     "webhook-forwarding",
-    "webhook-transformation"
+    "webhook-transformation",
+    "react"
   ],
   "homepage": "https://webhookrelay.com",
   "repository": {
