@@ -48,6 +48,17 @@ export class HttpClient {
     });
   }
 
+  /**
+   * A client with the same configuration that also sends `headers` with every
+   * request, e.g. the outbound environment header.
+   */
+  withHeaders(headers: Record<string, string>): HttpClient {
+    return new HttpClient({
+      ...this.config,
+      headers: { ...this.config.headers, ...headers },
+    });
+  }
+
   get baseUrl(): string {
     return this.config.baseUrl;
   }

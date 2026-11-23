@@ -1,6 +1,16 @@
 import type { HttpClient, RequestOptions } from "../http.js";
-import { outboundEndpointParams, outboundImportParams, outboundMessageParams } from "../params.js";
+import { WebhookRelayConfigError } from "../errors.js";
+import {
+  mergeForReplace,
+  outboundEndpointParams,
+  outboundImportParams,
+  outboundMessageParams,
+  outboundPortalSessionParams,
+} from "../params.js";
 import type {
+  CreateOutboundEnvironmentParams,
+  CreateOutboundPortalSessionParams,
+  ExpireOutboundPortalSessionsParams,
   ListAllOutboundEndpointsParams,
   ListOutboundDeliveriesParams,
   ListOutboundMessagesParams,
@@ -11,20 +21,47 @@ import type {
   OutboundEndpointCreateParams,
   OutboundEndpointParams,
   OutboundEndpointWithSecret,
+  OutboundEnvironment,
   OutboundEventType,
   OutboundHealth,
   OutboundImportRequest,
   OutboundImportTask,
   OutboundMessage,
+  OutboundPortalLink,
+  OutboundPortalSettings,
   OutboundRecoveryParams,
   OutboundRecoveryTask,
   PublishOutboundMessageOptions,
   PublishOutboundMessageParams,
+  SendOutboundTestParams,
+  UpdateOutboundPortalSettingsParams,
   UpsertOutboundConsumerParams,
   UpsertOutboundEventTypeParams,
 } from "../types.js";
 
 const segment = encodeURIComponent;
+
+/** The header that selects the outbound environment of a request. */
+export const OUTBOUND_ENVIRONMENT_HEADER = "X-Outbound-Environment";
+
+/** Server-owned endpoint fields that `endpoints.patch` does not send back. */
+const ENDPOINT_READ_ONLY = [
+  "id",
+  "consumer",
+  "environment",
+  "credentials_identity",
+  "state",
+  "consecutive_failures",
+  "failing_since",
+  "previous_secret_expires_at",
+  "stats",
+  "created_at",
+  "updated_at",
+] as const;
+
+function idempotencyHeaders(idempotencyKey: string | undefined): Record<string, string> | undefined {
+  return idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined;
+}
 
 /** Your customers (consumers) that receive outbound webhooks. */
 export class OutboundConsumersResource {
@@ -143,35 +180,91 @@ export class OutboundEndpointsResource {
   }
 
   /**
-   * Register an HTTPS endpoint for a consumer. The result carries the signing
+   * Register an endpoint for a consumer: an HTTPS URL, or a cloud destination
+   * (`type`, `destination` and `credentials`). The result carries the signing
    * secret your customer verifies deliveries with: a new one, or `secret` when
    * importing an existing Standard Webhooks secret (e.g. from Svix).
+   * `channels` and `filter` narrow which messages it receives.
    *
    * ```ts
    * const endpoint = await relay.outbound.endpoints.create("customer_42", {
    *   url: "https://customer.example/webhooks",
    *   eventTypes: ["invoice.paid"],
+   *   channels: ["project-123"],
+   *   filter: { amount: { $gte: 100 } },
    * });
    * ```
    */
   create(consumerId: string, params: OutboundEndpointCreateParams): Promise<OutboundEndpointWithSecret> {
     return this.http.unwrap(
+      // The generated type predates cloud endpoints, channels and filters.
       this.http.api.v1.outboundConsumersEndpointsCreate(
         segment(consumerId),
-        outboundEndpointParams(params),
+        outboundEndpointParams(params) as never,
       ),
       "POST",
       "/v1/outbound/consumers/{consumer}/endpoints",
     );
   }
 
-  /** Replace an endpoint's configuration. Its state and signing secrets are kept. */
+  /**
+   * Replace an endpoint's configuration. Its state and signing secrets are
+   * kept, and so are cloud credentials unless `credentials` is set. Fields
+   * left out are cleared, `filter` and `channels` included; use
+   * {@link patch} to change only some fields.
+   */
   update(id: string, params: OutboundEndpointParams): Promise<OutboundEndpoint> {
     return this.http.unwrap(
-      this.http.api.v1.outboundEndpointsUpdate(segment(id), outboundEndpointParams(params)),
+      this.http.api.v1.outboundEndpointsUpdate(segment(id), outboundEndpointParams(params) as never),
       "PUT",
       "/v1/outbound/endpoints/{id}",
     );
+  }
+
+  /**
+   * Change only the given fields: reads the endpoint, overlays `params` and
+   * replaces it, so its other settings (filter, channels, headers, ...) are
+   * kept. `undefined` keeps a field; set `filter: {}` or `channels: []` to
+   * clear one. Not atomic: a concurrent change between the read and the
+   * write is overwritten.
+   *
+   * ```ts
+   * await relay.outbound.endpoints.patch(endpoint.id, { filter: { status: { $in: ["paid", "refunded"] } } });
+   * ```
+   */
+  async patch(id: string, params: Partial<OutboundEndpointParams>): Promise<OutboundEndpoint> {
+    const current = await this.get(id);
+    const body = mergeForReplace(current, outboundEndpointParams(params), ENDPOINT_READ_ONLY);
+    return this.http.unwrap(
+      this.http.api.v1.outboundEndpointsUpdate(segment(id), body as never),
+      "PUT",
+      "/v1/outbound/endpoints/{id}",
+    );
+  }
+
+  /**
+   * Send a test event that only this endpoint receives, signed, retried and
+   * recorded like any other and marked `test`. The endpoint's filter applies,
+   * so a filter can be tried out; channels do not. Test events do not count
+   * toward the monthly message quota; an account may send 100 in any 24
+   * hours (429 beyond). Paused and disabled endpoints refuse it with 409.
+   *
+   * ```ts
+   * const receipt = await relay.outbound.endpoints.sendTest(endpoint.id, {
+   *   eventType: "invoice.paid",
+   *   payload: { invoice_id: "inv_test", amount: 4900 },
+   * });
+   * ```
+   */
+  sendTest(
+    id: string,
+    params: SendOutboundTestParams = {},
+    options: PublishOutboundMessageOptions = {},
+  ): Promise<OutboundMessage> {
+    return this.http.request<OutboundMessage>("POST", `/v1/outbound/endpoints/${segment(id)}/test`, {
+      body: outboundMessageParams(params),
+      headers: idempotencyHeaders(options.idempotencyKey),
+    });
   }
 
   /** Delete an endpoint. Delivery history is kept. */
@@ -270,8 +363,9 @@ export class OutboundMessagesResource {
 
   /**
    * Accept a message for signed delivery to every endpoint of the consumer
-   * subscribed to its event type. Delivery is asynchronous: the result is the
-   * durable acceptance receipt.
+   * subscribed to its event type (and, with `channels`, to one of its
+   * channels; endpoints without channels receive every message). Delivery is
+   * asynchronous: the result is the durable acceptance receipt.
    *
    * ```ts
    * await relay.outbound.messages.publish(
@@ -284,9 +378,7 @@ export class OutboundMessagesResource {
     params: PublishOutboundMessageParams,
     options: PublishOutboundMessageOptions = {},
   ): Promise<OutboundMessage> {
-    const headers = options.idempotencyKey
-      ? { "Idempotency-Key": options.idempotencyKey }
-      : undefined;
+    const headers = idempotencyHeaders(options.idempotencyKey);
     return this.http.unwrap(
       // The generated type narrows `payload` to an object; any JSON value is valid.
       this.http.api.v1.outboundMessagesCreate(outboundMessageParams(params) as never, { headers }),
@@ -402,6 +494,100 @@ export class OutboundImportsResource {
 }
 
 /**
+ * Outbound environments (`test`, `live`, ...), each with its own consumers,
+ * event types, endpoints and messages. `default` always exists and holds
+ * everything created without an environment. Quotas are shared by all
+ * environments. The generated client does not cover these paths yet.
+ */
+export class OutboundEnvironmentsResource {
+  constructor(private readonly http: HttpClient) {}
+
+  /** List the environments, `default` included. */
+  list(): Promise<OutboundEnvironment[]> {
+    return this.http.request("GET", "/v1/outbound/environments");
+  }
+
+  /**
+   * Create an environment (at most 20 besides `default`). 409 when it
+   * exists. Use it with `relay.outbound.withEnvironment(name)`.
+   */
+  create(params: CreateOutboundEnvironmentParams): Promise<OutboundEnvironment> {
+    return this.http.request("POST", "/v1/outbound/environments", { body: params });
+  }
+
+  /**
+   * Delete an environment. 409 while it still has consumers or event types;
+   * `default` cannot be deleted.
+   */
+  async delete(name: string): Promise<void> {
+    await this.http.request("DELETE", `/v1/outbound/environments/${segment(name)}`);
+  }
+}
+
+/**
+ * Links to the hosted consumer portal, where one consumer manages its own
+ * endpoints and reads its deliveries. Embed the link in your app with
+ * `<WebhookRelayPortal url={link.url} />` from `@webhookrelay/sdk/react`, or
+ * open it as a page. Sessions are created in the client's environment.
+ */
+export class OutboundPortalSessionsResource {
+  constructor(private readonly http: HttpClient) {}
+
+  /**
+   * Mint a portal link for one consumer, server-side, once per page load.
+   * The URL carries a one-time token in its fragment that must be opened
+   * within 15 minutes: hand it only to that consumer and never log it.
+   * Embedding needs your page's origin in the portal settings'
+   * `allowed_origins`.
+   *
+   * ```ts
+   * const { url } = await relay.outbound.portalSessions.create("customer_42", {
+   *   sessionId: `user-${user.id}`,
+   *   next: "endpoints/new",
+   * });
+   * ```
+   */
+  create(consumerId: string, params: CreateOutboundPortalSessionParams = {}): Promise<OutboundPortalLink> {
+    return this.http.request(
+      "POST",
+      `/v1/outbound/consumers/${segment(consumerId)}/portal-sessions`,
+      { body: outboundPortalSessionParams(params) },
+    );
+  }
+
+  /**
+   * End the consumer's open portal sessions, or only those tagged
+   * `sessionId` (e.g. when your user signs out). Returns how many ended.
+   */
+  expire(consumerId: string, params: ExpireOutboundPortalSessionsParams = {}): Promise<{ ended: number }> {
+    return this.http.request(
+      "POST",
+      `/v1/outbound/consumers/${segment(consumerId)}/portal-sessions/expire`,
+      { body: outboundPortalSessionParams(params) },
+    );
+  }
+}
+
+/** The consumer portal's branding and the origins allowed to embed it. */
+export class OutboundPortalSettingsResource {
+  constructor(private readonly http: HttpClient) {}
+
+  /** Read the portal settings. */
+  get(): Promise<OutboundPortalSettings> {
+    return this.http.request("GET", "/v1/outbound/portal-settings");
+  }
+
+  /**
+   * Replace the portal settings: fields left out are cleared, so start from
+   * {@link get}. `allowed_origins` are https origins that may embed the
+   * portal; changes reach portal pages within about 10 seconds.
+   */
+  update(params: UpdateOutboundPortalSettingsParams): Promise<OutboundPortalSettings> {
+    return this.http.request("PUT", "/v1/outbound/portal-settings", { body: params });
+  }
+}
+
+/**
  * Outbound webhooks (pilot): send signed webhooks to your own customers.
  * Register each customer as a consumer with the HTTPS endpoints they give
  * you, then publish messages. Webhook Relay signs every delivery (Standard
@@ -414,7 +600,14 @@ export class OutboundResource {
   readonly messages: OutboundMessagesResource;
   readonly recoveryTasks: OutboundRecoveryTasksResource;
   readonly imports: OutboundImportsResource;
+  readonly environments: OutboundEnvironmentsResource;
+  readonly portalSessions: OutboundPortalSessionsResource;
+  readonly portalSettings: OutboundPortalSettingsResource;
 
+  /**
+   * `http` already carries the client's environment header, if any; the
+   * resource sends everything through it.
+   */
   constructor(private readonly http: HttpClient) {
     this.consumers = new OutboundConsumersResource(http);
     this.eventTypes = new OutboundEventTypesResource(http);
@@ -422,6 +615,28 @@ export class OutboundResource {
     this.messages = new OutboundMessagesResource(http);
     this.recoveryTasks = new OutboundRecoveryTasksResource(http);
     this.imports = new OutboundImportsResource(http);
+    this.environments = new OutboundEnvironmentsResource(http);
+    this.portalSessions = new OutboundPortalSessionsResource(http);
+    this.portalSettings = new OutboundPortalSettingsResource(http);
+  }
+
+  /**
+   * The same outbound API acting in another environment: every call sends
+   * `X-Outbound-Environment: <name>`. Cheap; nothing is fetched. An unknown
+   * environment fails each call with 404, and a token bound to a different
+   * environment with 403.
+   *
+   * ```ts
+   * const live = relay.outbound.withEnvironment("live");
+   * await live.messages.publish({ consumer: "customer_42", eventType: "invoice.paid", payload });
+   * ```
+   */
+  withEnvironment(name: string): OutboundResource {
+    const environment = name.trim();
+    if (!environment) {
+      throw new WebhookRelayConfigError("withEnvironment needs an environment name, e.g. \"default\"");
+    }
+    return new OutboundResource(this.http.withHeaders({ [OUTBOUND_ENVIRONMENT_HEADER]: environment }));
   }
 
   /**

@@ -6,7 +6,7 @@ import { OutputsResource } from "./resources/outputs.js";
 import { ServiceConnectionsResource } from "./resources/serviceConnections.js";
 import { FunctionsResource } from "./resources/functions.js";
 import { WebhooksResource } from "./resources/webhooks.js";
-import { OutboundResource } from "./resources/outbound.js";
+import { OUTBOUND_ENVIRONMENT_HEADER, OutboundResource } from "./resources/outbound.js";
 
 /**
  * The Webhook Relay API client.
@@ -54,7 +54,11 @@ export class WebhookRelay {
     this.serviceConnections = new ServiceConnectionsResource(this.http);
     this.functions = new FunctionsResource(this.http);
     this.webhooks = new WebhooksResource(this.http, resolved);
-    this.outbound = new OutboundResource(this.http);
+    this.outbound = new OutboundResource(
+      resolved.outboundEnvironment
+        ? this.http.withHeaders({ [OUTBOUND_ENVIRONMENT_HEADER]: resolved.outboundEnvironment })
+        : this.http,
+    );
   }
 
   /**

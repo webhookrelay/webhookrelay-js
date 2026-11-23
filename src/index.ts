@@ -55,6 +55,10 @@ export {
   OutboundMessagesResource,
   OutboundRecoveryTasksResource,
   OutboundImportsResource,
+  OutboundEnvironmentsResource,
+  OutboundPortalSessionsResource,
+  OutboundPortalSettingsResource,
+  OUTBOUND_ENVIRONMENT_HEADER,
   isOutboundImportDone,
   type OutboundImportCallOptions,
 } from "./resources/outbound.js";
