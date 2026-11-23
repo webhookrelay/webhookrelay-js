@@ -732,8 +732,8 @@ export interface SendOutboundTestParams {
   event_type?: string;
   eventType?: string;
   /**
-   * Any JSON value; defaults to the event type's example. The endpoint's
-   * filter applies, its channels do not.
+   * Any JSON value; defaults to the event type's example. A test always
+   * reaches the endpoint: neither its filter nor its channels apply.
    */
   payload?: unknown;
 }

@@ -333,7 +333,7 @@ await relay.outbound.messages.publish({
   payload: { invoice_id: "inv_123", status: "paid", amount: 4900 },
 });
 
-// A test event only this endpoint receives; the filter applies, channels do not.
+// A test event only this endpoint receives; it skips the filter and channels.
 const test = await relay.outbound.endpoints.sendTest(endpoint.id, { eventType: "invoice.paid" });
 
 // `endpoints.update` replaces the whole configuration (an update without

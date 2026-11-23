@@ -119,6 +119,50 @@ export class HttpClient {
     }
   }
 
+  /**
+   * Send a request whose body, when given, is already JSON text, and return
+   * the response body as text. For callers that must not round-trip JSON
+   * through `JSON.parse`, which rounds numbers beyond float64 precision.
+   */
+  async requestText(
+    method: string,
+    path: string,
+    options: Omit<RequestOptions, "body"> & { json?: string } = {},
+  ): Promise<string> {
+    const { signal, cleanup } = this.makeSignal(options.signal, options.timeoutMs);
+    try {
+      const response = await this.fetchWithTimeout(this.buildUrl(path, options.query), {
+        method,
+        signal,
+        headers: {
+          Accept: "application/json",
+          "User-Agent": this.config.userAgent,
+          ...this.config.headers,
+          ...options.headers,
+          Authorization: this.config.authHeader,
+          ...(options.json === undefined ? {} : { "Content-Type": ContentType.Json }),
+        },
+        body: options.json,
+      });
+      const text = await response.text();
+      if (!response.ok) {
+        const failed = response as HttpResponse<unknown, unknown>;
+        failed.data = null;
+        try {
+          failed.error = text ? JSON.parse(text) : text;
+        } catch {
+          failed.error = text;
+        }
+        throw failed;
+      }
+      return text;
+    } catch (err) {
+      throw await this.toError(err, method, path);
+    } finally {
+      cleanup();
+    }
+  }
+
   async unwrap<T>(
     response: Promise<HttpResponse<unknown, unknown>>,
     method: string,

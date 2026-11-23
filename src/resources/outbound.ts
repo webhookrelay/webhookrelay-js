@@ -1,5 +1,6 @@
 import type { HttpClient, RequestOptions } from "../http.js";
 import { WebhookRelayConfigError } from "../errors.js";
+import { rawJsonMember, stringifyWithRawMembers } from "../rawJson.js";
 import {
   mergeForReplace,
   outboundEndpointParams,
@@ -225,27 +226,38 @@ export class OutboundEndpointsResource {
    * Change only the given fields: reads the endpoint, overlays `params` and
    * replaces it, so its other settings (filter, channels, headers, ...) are
    * kept. `undefined` keeps a field; set `filter: {}` or `channels: []` to
-   * clear one. Not atomic: a concurrent change between the read and the
-   * write is overwritten.
+   * clear one. A kept filter is sent back exactly as the server returned it,
+   * so numbers beyond float64 precision are not rounded. Not atomic: a
+   * concurrent change between the read and the write is overwritten.
    *
    * ```ts
    * await relay.outbound.endpoints.patch(endpoint.id, { filter: { status: { $in: ["paid", "refunded"] } } });
    * ```
    */
   async patch(id: string, params: Partial<OutboundEndpointParams>): Promise<OutboundEndpoint> {
-    const current = await this.get(id);
+    const path = `/v1/outbound/endpoints/${segment(id)}`;
+    const currentText = await this.http.requestText("GET", path);
+    const current = JSON.parse(currentText) as OutboundEndpoint;
     const body = mergeForReplace(current, outboundEndpointParams(params), ENDPOINT_READ_ONLY);
-    return this.http.unwrap(
-      this.http.api.v1.outboundEndpointsUpdate(segment(id), body as never),
-      "PUT",
-      "/v1/outbound/endpoints/{id}",
-    );
+    // JSON.parse rounds filter numbers (9007199254740993 becomes
+    // 9007199254740992), and the PUT replaces the filter whole: send a kept
+    // filter back as the server's own text.
+    const rawFilter = params.filter === undefined ? rawJsonMember(currentText, "filter") : undefined;
+    let json: string;
+    if (rawFilter === undefined) {
+      json = JSON.stringify(body);
+    } else {
+      const { filter: _parsed, ...rest } = body;
+      json = stringifyWithRawMembers(rest, { filter: rawFilter });
+    }
+    const updated = await this.http.requestText("PUT", path, { json });
+    return JSON.parse(updated) as OutboundEndpoint;
   }
 
   /**
    * Send a test event that only this endpoint receives, signed, retried and
-   * recorded like any other and marked `test`. The endpoint's filter applies,
-   * so a filter can be tried out; channels do not. Test events do not count
+   * recorded like any other and marked `test`. It always reaches the
+   * endpoint: neither its channels nor its filter apply. Test events do not count
    * toward the monthly message quota; an account may send 100 in any 24
    * hours (429 beyond). Paused and disabled endpoints refuse it with 409.
    *

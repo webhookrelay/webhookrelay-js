@@ -134,6 +134,45 @@ describe("outbound routing", () => {
     });
   });
 
+  it("patch sends a kept filter back byte for byte", async () => {
+    // JSON.parse would read these as 9007199254740992 and 0.3.
+    const raw =
+      '{"id":"ep-1","url":"https://a.example","event_types":["a"],"state":"active",' +
+      '"filter":{"id":9007199254740993,"ratio":{"$gte":0.30000000000000000001},"tags":{"$in":["a\\"}",1e400]}},' +
+      '"rate":5}';
+    const { relay, calls } = createClient(() => ({ text: raw }));
+
+    await relay.outbound.endpoints.patch("ep-1", { description: "Billing" });
+
+    expect(requests(calls)).toEqual(["GET /v1/outbound/endpoints/ep-1", "PUT /v1/outbound/endpoints/ep-1"]);
+    const sent = calls[1]?.rawBody ?? "";
+    expect(sent).toContain(
+      '"filter":{"id":9007199254740993,"ratio":{"$gte":0.30000000000000000001},"tags":{"$in":["a\\"}",1e400]}}',
+    );
+    expect(sent.match(/"filter"/g)).toHaveLength(1);
+    expect(calls[1]?.headers["Content-Type"]).toBe("application/json");
+    expect(JSON.parse(sent)).toMatchObject({ url: "https://a.example", event_types: ["a"], rate: 5, description: "Billing" });
+    expect(JSON.parse(sent)).not.toHaveProperty("state");
+  });
+
+  it("patch replaces the filter when one is given", async () => {
+    const raw = '{"id":"ep-1","url":"https://a.example","filter":{"id":9007199254740993}}';
+    const { relay, calls } = createClient(() => ({ text: raw }));
+
+    await relay.outbound.endpoints.patch("ep-1", { filter: { status: "paid" } });
+
+    expect(calls[1]?.rawBody).toBe('{"url":"https://a.example","filter":{"status":"paid"}}');
+  });
+
+  it("patch reports API errors", async () => {
+    const { relay } = createClient(() => ({ status: 404, json: { error: "endpoint not found" } }));
+
+    await expect(relay.outbound.endpoints.patch("ep-1", { description: "x" })).rejects.toMatchObject({
+      status: 404,
+      body: { error: "endpoint not found" },
+    });
+  });
+
   it("patch normalizes camelCase fields and can clear channels", async () => {
     const current = { id: "ep-1", url: "https://a.example", event_types: ["a"], channels: ["x"], state: "active" };
     const { relay, calls } = createClient(() => ({ json: current }));

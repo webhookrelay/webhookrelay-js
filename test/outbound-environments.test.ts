@@ -26,8 +26,10 @@ describe("outbound environments", () => {
     await relay.outbound.messages.publish({ consumer: "c", eventType: "e", payload: {} }, { idempotencyKey: "k" });
     await relay.outbound.endpoints.sendTest("ep-1");
     await relay.outbound.portalSessions.create("c");
+    await relay.outbound.endpoints.patch("ep-1", { description: "x" });
 
-    expect(calls.map(environmentOf)).toEqual(["test", "test", "test", "test"]);
+    expect(calls.map(environmentOf)).toEqual(["test", "test", "test", "test", "test", "test"]);
+    expect(calls[4]?.headers.Authorization).toMatch(/^Bearer /);
     expect(calls[1]?.headers["Idempotency-Key"]).toBe("k");
   });
 

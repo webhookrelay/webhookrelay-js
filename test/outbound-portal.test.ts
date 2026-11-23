@@ -1,8 +1,8 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createClient } from "./helpers.js";
-import { WebhookRelayPortal } from "../src/react.js";
+import { isAllowedPortalUrl, WebhookRelayPortal } from "../src/react.js";
 import { allowSiteToEmbed, createPortalLink, CustomerWebhooks, signOut } from "../examples/outbound-portal.js";
 
 const base = "https://my.webhookrelay.com";
@@ -81,9 +81,47 @@ describe("outbound portal", () => {
     const html = renderToStaticMarkup(createElement(WebhookRelayPortal, { url: portalUrl }));
 
     expect(html).toBe(
-      `<iframe src="${portalUrl}" title="Webhooks" allow="clipboard-write" ` +
+      `<iframe src="${portalUrl}" title="Webhooks" allow="clipboard-write" referrerPolicy="no-referrer" ` +
         `style="border:0;display:block;width:100%;height:600px"></iframe>`,
     );
+  });
+
+  it("refuses portal URLs that are not https", () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      for (const url of [
+        "javascript:alert(document.cookie)",
+        "JaVaScRiPt:alert(1)",
+        "data:text/html,<script>alert(1)</script>",
+        "http://my.webhookrelay.com/portal/p-1#token=wrpt_abc",
+        "//my.webhookrelay.com/portal/p-1",
+        "not a url",
+        "",
+      ]) {
+        expect(renderToStaticMarkup(createElement(WebhookRelayPortal, { url })), url).toBe("");
+      }
+      expect(error).toHaveBeenCalledTimes(7);
+      // The refused URL may carry a token: it is never logged.
+      expect(error.mock.calls.flat().join(" ")).not.toContain("wrpt_abc");
+    } finally {
+      error.mockRestore();
+    }
+  });
+
+  it("frames https portal URLs and plain http only on localhost", () => {
+    expect(isAllowedPortalUrl(portalUrl)).toBe(true);
+    expect(isAllowedPortalUrl("http://localhost:8080/portal/p-1#token=x")).toBe(true);
+    expect(isAllowedPortalUrl("http://127.0.0.1:8080/portal/p-1")).toBe(true);
+    expect(isAllowedPortalUrl("http://localhost.evil.example/portal")).toBe(false);
+    expect(isAllowedPortalUrl("ftp://my.webhookrelay.com/portal")).toBe(false);
+  });
+
+  it("keeps the no-referrer policy when frame props try to override it", () => {
+    const html = renderToStaticMarkup(
+      createElement(WebhookRelayPortal, { url: portalUrl, referrerPolicy: "unsafe-url" }),
+    );
+    expect(html).toContain('referrerPolicy="no-referrer"');
+    expect(html).not.toContain("unsafe-url");
   });
 
   it("passes size, class, style and frame props through", () => {

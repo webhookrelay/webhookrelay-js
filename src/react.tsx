@@ -17,7 +17,9 @@ export interface WebhookRelayPortalProps
   /**
    * The portal link from `relay.outbound.portalSessions.create`, minted on
    * your server for the signed-in consumer. It carries a one-time token in
-   * its fragment: never log it. A new `url` mounts a new iframe.
+   * its fragment: never log it. A new `url` mounts a new iframe. Only
+   * `https:` URLs (and `http://localhost` / `http://127.0.0.1` for local
+   * development) are framed; anything else renders nothing.
    */
   url: string;
   /** Accessible name of the frame. Defaults to "Webhooks". */
@@ -37,6 +39,22 @@ export interface WebhookRelayPortalProps
  * manages their own webhook endpoints and reads their deliveries. Embedding
  * needs your page's origin in the portal settings' `allowed_origins`.
  */
+/**
+ * Whether `url` may be framed as the portal: an `https:` URL, or `http:` on
+ * `localhost` / `127.0.0.1` for local development. Anything else (e.g. a
+ * `javascript:` or `data:` URL from an untrusted source) is refused.
+ */
+export function isAllowedPortalUrl(url: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol === "https:") return true;
+  return parsed.protocol === "http:" && (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1");
+}
+
 export function WebhookRelayPortal({
   url,
   title = "Webhooks",
@@ -46,6 +64,11 @@ export function WebhookRelayPortal({
   allow = "clipboard-write",
   ...frameProps
 }: WebhookRelayPortalProps) {
+  if (!isAllowedPortalUrl(url)) {
+    // Never log the URL itself: it carries a one-time token.
+    console.error("WebhookRelayPortal: refusing a portal url that is not https");
+    return null;
+  }
   return (
     <iframe
       // The token in the URL is one-time: a changed URL needs a fresh frame.
@@ -54,6 +77,8 @@ export function WebhookRelayPortal({
       src={url}
       title={title}
       allow={allow}
+      // The URL carries a one-time token; never leak it in a Referer.
+      referrerPolicy="no-referrer"
       style={{ border: 0, display: "block", width, height, ...style }}
     />
   );

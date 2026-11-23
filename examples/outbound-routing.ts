@@ -37,8 +37,9 @@ export function publishToProject(relay: WebhookRelay) {
   );
 }
 
-// Send the endpoint a test event: the filter applies, so this checks it lets
-// a matching payload through. Test events have their own daily allowance.
+// Send the endpoint a test event to check it receives and verifies deliveries.
+// A test always reaches the endpoint: its filter and channels are skipped, so
+// it does not exercise the filter. Test events have their own daily allowance.
 export function sendTestEvent(relay: WebhookRelay, endpointId: string) {
   return relay.outbound.endpoints.sendTest(endpointId, {
     eventType: "invoice.paid",

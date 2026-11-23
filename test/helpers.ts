@@ -13,6 +13,8 @@ export interface RecordedCall {
   method: string;
   headers: Record<string, string>;
   body: unknown;
+  /** The request body exactly as sent, when it was a string. */
+  rawBody?: string;
 }
 
 export type Responder = (
@@ -43,6 +45,7 @@ export function createMockFetch(responder: Responder) {
       method,
       headers: (init.headers as Record<string, string>) ?? {},
       body,
+      rawBody: typeof init.body === "string" ? init.body : undefined,
     };
     calls.push(call);
     const r = await responder(url, method, call);
